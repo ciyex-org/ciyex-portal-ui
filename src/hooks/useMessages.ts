@@ -1,47 +1,48 @@
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
 
-export type ApiReport = {
+export type ApiMessage = {
   id: number;
   patientId: number;
-  category: string;
-  type: string;
-  fileName: string;
-  contentType: string;
-  description?: string;
-  encrypted: boolean;
+  senderId: number;
+  recipientId: number;
+  subject: string;
+  message: string;
+  status: string; // unread|read|archived
+  priority: string; // low|normal|high|urgent
+  category?: string;
   createdDate?: string;
   lastModifiedDate?: string;
 };
 
-export function useReports() {
-  const [reports, setReports] = useState<ApiReport[]>([]);
+export function useMessages() {
+  const [messages, setMessages] = useState<ApiMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadReports = async () => {
+    const loadMessages = async () => {
       try {
-        const res = await fetchWithAuth("/api/fhir/portal/reports/my");
+        const res = await fetchWithAuth("/api/portal/messages/my");
         if (res.ok) {
           const data = await res.json();
-          setReports(data.data || []);
+          setMessages(data.data || []);
         } else if (res.status === 403) {
           // Forbidden - set empty list and suppress error for UI continuity
-          setReports([]);
+          setMessages([]);
         } else {
-          console.error("Reports fetch failed:", res.status);
+          console.error("Messages fetch failed:", res.status);
           setError(`HTTP ${res.status}`);
         }
       } catch (e) {
-        console.error("Reports error:", e);
+        console.error("Messages error:", e);
         setError("Network or auth error");
       } finally {
         setLoading(false);
       }
     };
-    loadReports();
+    loadMessages();
   }, []);
 
-  return { reports, loading, error };
+  return { messages, loading, error };
 }

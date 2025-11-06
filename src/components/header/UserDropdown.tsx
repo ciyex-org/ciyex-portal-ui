@@ -6,6 +6,7 @@ import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { getInitials } from "@/utils/getInitials";
 import { useRouter } from "next/navigation";
+import { clearAuth, getPrimaryGroup, getGroupDisplayName } from '@/utils/authUtils';
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -15,7 +16,7 @@ export default function UserDropdown() {
     email?: string;
     profileImage?: string;
   } | null>(null);
-  const [orgName, setOrgName] = useState<string | null>(null);
+  const [primaryGroupDisplay, setPrimaryGroupDisplay] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -35,11 +36,9 @@ export default function UserDropdown() {
       }
     }
 
-    // Load selected org name
-    const storedOrg = localStorage.getItem("orgName");
-    if (storedOrg) {
-      setOrgName(storedOrg);
-    }
+    // Show primary Keycloak group as the user's context (if present)
+    const pg = getPrimaryGroup();
+    if (pg) setPrimaryGroupDisplay(getGroupDisplayName(pg));
   }, []);
 
   function toggleDropdown(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) {
@@ -52,10 +51,35 @@ export default function UserDropdown() {
   }
 
   const handleSignOut = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("orgId");
-    localStorage.removeItem("orgName");
-    router.push("/signin");
+    // Read auth method before clearing state
+    const authMethod = localStorage.getItem('authMethod');
+
+    // Clear application auth state
+    try {
+      clearAuth();
+      sessionStorage.removeItem('pkce_code_verifier');
+    } catch (e) {
+      console.warn('Error clearing auth state', e);
+    }
+
+    // If Keycloak was the auth method, redirect to Keycloak logout
+    if (authMethod === 'keycloak') {
+      const keycloakUrl = process.env.NEXT_PUBLIC_KEYCLOAK_URL;
+      const keycloakRealm = process.env.NEXT_PUBLIC_KEYCLOAK_REALM;
+      const keycloakClientId = process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID;
+
+      if (keycloakUrl && keycloakRealm) {
+        const redirect = encodeURIComponent(window.location.origin + '/signin');
+        const clientParam = keycloakClientId ? `&client_id=${encodeURIComponent(keycloakClientId)}` : '';
+        const logoutUrl = `${keycloakUrl}/realms/${keycloakRealm}/protocol/openid-connect/logout?redirect_uri=${redirect}${clientParam}`;
+        // Redirecting the browser to Keycloak logout will also clear IdP session cookies
+        window.location.href = logoutUrl;
+        return;
+      }
+    }
+
+    // Fallback: go back to sign-in page
+    router.push('/signin');
   };
 
   return (
@@ -71,9 +95,9 @@ export default function UserDropdown() {
           <span className="block font-medium text-theme-sm">
             {user?.firstName || "User"}
           </span>
-          {orgName && (
+          {primaryGroupDisplay && (
             <span className="block text-xs text-gray-500 dark:text-gray-400">
-              {orgName}
+              {primaryGroupDisplay}
             </span>
           )}
         </div>
@@ -109,9 +133,9 @@ export default function UserDropdown() {
           <span className="mt-0.5 block text-theme-xs text-gray-500 dark:text-gray-400">
             {user?.email}
           </span>
-          {orgName && (
+          {primaryGroupDisplay && (
             <span className="mt-0.5 block text-theme-xs text-indigo-600 dark:text-indigo-400">
-              🏥 {orgName}
+              {primaryGroupDisplay}
             </span>
           )}
         </div>

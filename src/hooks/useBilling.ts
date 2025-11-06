@@ -50,6 +50,9 @@ export function useBilling() {
         if (res.ok) {
           const data = await res.json();
           setInvoices(data.data || []);
+        } else if (res.status === 403) {
+          // Forbidden - set empty list and suppress error for UI continuity
+          setInvoices([]);
         } else {
           console.error("Billing fetch failed:", res.status);
           setError(`HTTP ${res.status}`);

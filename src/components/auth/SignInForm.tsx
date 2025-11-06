@@ -240,8 +240,14 @@ export default function SignInForm() {
                                 Secure Sign-In
                             </h2>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                Use your Aran account or local credentials
+                                {keycloakEnabled ? 'Sign in with Aran (Keycloak)' : 'Use your Aran account or local credentials'}
                             </p>
+                            {process.env.NODE_ENV === 'development' && (
+                                <div className="mt-2 text-xs text-gray-500">
+                                    <span className="inline-block mr-2">Keycloak enabled: <strong>{String(keycloakEnabled)}</strong></span>
+                                    <span className="inline-block">Keycloak URL: <code className="text-xs">{keycloakUrl || '—'}</code></span>
+                                </div>
+                            )}
                         </div>
 
                         {/* Keycloak Sign In Button */}
@@ -267,72 +273,64 @@ export default function SignInForm() {
                                         </>
                                     )}
                                 </Button>
-
-                                {/* Divider */}
-                                <div className="relative my-6">
-                                    <div className="absolute inset-0 flex items-center">
-                                        <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
-                                    </div>
-                                    <div className="relative flex justify-center text-sm">
-                                        <span className="px-2 bg-white dark:bg-gray-800 text-gray-500">Or continue with</span>
-                                    </div>
-                                </div>
                             </div>
                         )}
 
-                        {/* Local Login Form */}
+                        {/* Local Login Form (only when Keycloak is disabled) */}
                         {error && (
                             <div className="mb-4 text-sm text-red-600 bg-red-50 px-3 py-2 rounded">
                                 {error}
                             </div>
                         )}
 
-                        <form onSubmit={handleLocalSignIn} className="space-y-4">
-                            <input
-                                type="email"
-                                name="email"
-                                placeholder="Email"
-                                value={form.email}
-                                onChange={handleChange}
-                                className="w-full border rounded-md px-3 py-2 focus:ring focus:ring-blue-200 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                required
-                            />
-                            <div className="relative">
+                        {!keycloakEnabled && (
+                            <form onSubmit={handleLocalSignIn} className="space-y-4">
                                 <input
-                                    type={showPassword ? "text" : "password"}
-                                    name="password"
-                                    placeholder="Password"
-                                    value={form.password}
+                                    type="email"
+                                    name="email"
+                                    placeholder="Email"
+                                    value={form.email}
                                     onChange={handleChange}
                                     className="w-full border rounded-md px-3 py-2 focus:ring focus:ring-blue-200 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                                     required
                                 />
+                                <div className="relative">
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        name="password"
+                                        placeholder="Password"
+                                        value={form.password}
+                                        onChange={handleChange}
+                                        className="w-full border rounded-md px-3 py-2 focus:ring focus:ring-blue-200 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-2 text-xs text-blue-600 dark:text-blue-400"
+                                    >
+                                        {showPassword ? "Hide" : "Show"}
+                                    </button>
+                                </div>
+
+                                <div className="flex justify-end">
+                                    <a
+                                        href="/forgot-password"
+                                        className="text-xs text-blue-600 hover:underline dark:text-blue-400"
+                                    >
+                                        Forgot Password?
+                                    </a>
+                                </div>
+
                                 <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-2 text-xs text-blue-600 dark:text-blue-400"
+                                    type="submit"
+                                    disabled={localLoading}
+                                    className="w-full bg-purple-600 text-white py-2 rounded-md hover:bg-purple-700 transition disabled:opacity-50"
                                 >
-                                    {showPassword ? "Hide" : "Show"}
+                                    {localLoading ? "Logging in..." : "Log In with Email"}
                                 </button>
-                            </div>
-
-                            <div className="flex justify-end">
-                                <a
-                                    href="/forgot-password"
-                                    className="text-xs text-blue-600 hover:underline dark:text-blue-400"
-                                >
-                                    Forgot Password?
-                                </a>
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={localLoading}
-                                className="w-full bg-purple-600 text-white py-2 rounded-md hover:bg-purple-700 transition disabled:opacity-50"
-                            >
-                                {localLoading ? "Logging in..." : "Log In with Email"}
-                            </button>
-                        </form>
+                            </form>
+                        )}
                     </div>
 
                     <div className="mt-6">

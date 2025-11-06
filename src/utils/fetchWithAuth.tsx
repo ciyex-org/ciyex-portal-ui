@@ -3,14 +3,13 @@ export async function fetchWithAuth(
   init: RequestInit = {}
 ): Promise<Response> {
   let token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
-  let orgId = typeof window !== "undefined" ? localStorage.getItem("orgId") : undefined;
+  // authMethod intentionally not used here; backend decides tenancy from token
 
   // 🕒 Wait for token to appear (after login redirect)
   let attempts = 0;
   while (!token && attempts < 15) {
     await new Promise(r => setTimeout(r, 200));
     token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
-    orgId = typeof window !== "undefined" ? localStorage.getItem("orgId") : undefined;
     attempts++;
   }
 
@@ -22,30 +21,16 @@ export async function fetchWithAuth(
     throw new Error("Auth token missing");
   }
 
-  // If orgId not in localStorage, try to extract from JWT token
-  if (!orgId && token) {
-    try {
-      const { getOrgIdsFromToken } = await import('./jwtHelper');
-      const orgIds = getOrgIdsFromToken();
-      if (orgIds.length > 0) {
-        orgId = orgIds[0].toString();
-        // Save it for future use
-        if (typeof window !== "undefined") {
-          localStorage.setItem("orgId", orgId);
-        }
-      }
-    } catch (e) {
-      console.warn("Could not extract orgId from token:", e);
-    }
-  }
+  // We no longer rely on an explicit orgId header. Backend should accept
+  // token-only authentication (Keycloak or local) and derive any tenancy
+  // from the token/portal-user mapping server-side. Do not persist orgId
+  // on the client anymore.
 
   // Debug logging (only in development)
   if (process.env.NODE_ENV === 'development') {
     console.debug('🔍 fetchWithAuth debug:', {
       hasToken: !!token,
       tokenLength: token?.length,
-      hasOrgId: !!orgId,
-      orgId,
       url: typeof input === "string" ? input : input.url
     });
   }
@@ -53,7 +38,6 @@ export async function fetchWithAuth(
   const authHeaders: Record<string, string> = {
     "Accept": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(orgId ? { "x-org-id": orgId } : {}),   // ✅ use x-org-id to match backend
   };
 
   // Don't set Content-Type for FormData - let browser set it automatically
@@ -88,7 +72,6 @@ export async function fetchWithAuth(
         console.warn("🔄 Token expired, redirecting to login");
         if (typeof window !== "undefined") {
           localStorage.removeItem("token");
-          localStorage.removeItem("orgId");
           window.location.href = "/signin";
         }
         throw new Error("Token expired");
@@ -98,7 +81,6 @@ export async function fetchWithAuth(
       // If we can't check expiration, still redirect on 401
       if (typeof window !== "undefined") {
         localStorage.removeItem("token");
-        localStorage.removeItem("orgId");
         window.location.href = "/signin";
       }
       throw new Error("Authentication failed");

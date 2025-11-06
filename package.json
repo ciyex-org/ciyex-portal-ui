@@ -23,8 +23,10 @@
     "apexcharts": "^4.3.0",
     "autoprefixer": "^10.4.20",
     "flatpickr": "^4.6.13",
+    "jwt-decode": "^4.0.0",
     "next": "15.2.3",
     "next-auth": "^4.24.11",
+    "nodemailer": "^7.0.7",
     "react": "^19.0.0",
     "react-apexcharts": "^1.7.0",
     "react-datepicker": "^8.7.0",
@@ -37,8 +39,6 @@
     "swiper": "^11.2.0",
     "swr": "^2.3.6",
     "tailwind-merge": "^2.6.0"
-  ,
-  "nodemailer": "^7.0.7"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

@@ -44,6 +44,11 @@ export function useMedications() {
             setError(data.message);
           }
         }
+      } else if (res.status === 403) {
+        // Portal users may not have access to EHR medications endpoint — treat as empty list (no error)
+        console.log('Medications access denied for portal user - showing empty list');
+        setMedications([]);
+        setError(null); // suppress error so UI shows empty state
       } else {
         const errorData = await res.json().catch(() => ({}));
         console.error("Medications fetch failed:", res.status, errorData);

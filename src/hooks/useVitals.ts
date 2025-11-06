@@ -29,6 +29,9 @@ export function useVitals() {
         if (res.ok) {
           const data = await res.json();
           setVitals(data.data || []);
+        } else if (res.status === 403) {
+          // Forbidden - set empty list and suppress error for UI continuity
+          setVitals([]);
         } else {
           console.error("Vitals fetch failed:", res.status);
           setError(`HTTP ${res.status}`);

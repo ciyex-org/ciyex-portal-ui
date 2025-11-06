@@ -37,6 +37,9 @@ export function useInsurance() {
             setError(data.message);
           }
         }
+      } else if (res.status === 403) {
+        // Forbidden - set empty list and suppress error for UI continuity
+        setCoverages([]);
       } else {
         const errorData = await res.json().catch(() => ({}));
         console.error("Insurance fetch failed:", res.status, errorData);

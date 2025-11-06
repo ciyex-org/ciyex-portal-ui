@@ -25,6 +25,9 @@ export function useDocuments() {
       if (res.ok) {
         const data = await res.json();
         setDocuments(data.data || []);
+      } else if (res.status === 403) {
+        // Forbidden - set empty list and suppress error for UI continuity
+        setDocuments([]);
       } else {
         console.error("Documents fetch failed:", res.status);
         setError(`HTTP ${res.status}`);

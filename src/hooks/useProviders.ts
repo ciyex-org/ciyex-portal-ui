@@ -29,17 +29,78 @@ export function useProviders() {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetchWithAuth('/api/portal/providers');
+            // First attempt: portal-specific endpoint
+            let response = await fetchWithAuth('/api/portal/providers');
             if (!response.ok) {
-                throw new Error('Failed to fetch providers');
+                console.warn('[useProviders] /api/portal/providers failed with', response.status, response.statusText);
+                // Fallback: generic providers endpoint (EHR style)
+                response = await fetchWithAuth('/api/providers');
+                if (!response.ok) {
+                    console.error('[useProviders] Fallback /api/providers failed with', response.status, response.statusText);
+                    throw new Error(`Provider fetch failed (portal:${response.status})`);
+                }
             }
+
             const data = await response.json();
-            if (data.success) {
-                setProviders(data.data);
-            } else {
-                throw new Error(data.message || 'Failed to fetch providers');
+
+            // Normalize different ApiResponse wrappers (portal vs generic)
+            const apiSuccess = data?.success === true || Array.isArray(data?.data) || Array.isArray(data);
+            type RawProvider = {
+                id: number;
+                fullName?: string;
+                title?: string;
+                phone?: string;
+                email?: string;
+                name?: string;
+                contactPhone?: string;
+                contactEmail?: string;
+                identification?: { firstName?: string; lastName?: string };
+                professionalDetails?: {
+                    specialty?: string;
+                    title?: string;
+                    location?: string;
+                    workingHours?: string;
+                    experience?: string;
+                    languages?: string[];
+                };
+                specialty?: string;
+                location?: string;
+                workingHours?: string;
+                experience?: string;
+                languages?: string[];
+                firstName?: string;
+                lastName?: string;
+            };
+            const providerArray: RawProvider[] = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+
+            if (!apiSuccess) {
+                console.error('[useProviders] Unexpected provider response shape', data);
+                throw new Error(data?.message || 'Failed to fetch providers');
             }
+
+            // Map DTOs to Provider shape expected by UI
+            const mapped: Provider[] = providerArray.map((p: RawProvider) => ({
+                id: p.id,
+                fullName: p.fullName || [p.identification?.firstName, p.identification?.lastName].filter(Boolean).join(' ') || p.name || 'Unknown',
+                title: p.title || p.professionalDetails?.title || '',
+                phone: p.phone || p.contactPhone || '',
+                email: p.email || p.contactEmail || '',
+                identification: {
+                    firstName: p.identification?.firstName || p.firstName || '',
+                    lastName: p.identification?.lastName || p.lastName || ''
+                },
+                professionalDetails: {
+                    specialty: p.professionalDetails?.specialty || p.specialty || '',
+                    location: p.professionalDetails?.location || p.location || '',
+                    workingHours: p.professionalDetails?.workingHours || p.workingHours || '',
+                    experience: p.professionalDetails?.experience || p.experience || '',
+                    languages: p.professionalDetails?.languages || p.languages || []
+                }
+            }));
+
+            setProviders(mapped);
         } catch (err) {
+            console.error('[useProviders] Fetch providers error:', err);
             setError(err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);

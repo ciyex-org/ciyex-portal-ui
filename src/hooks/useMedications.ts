@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
 
@@ -37,7 +38,33 @@ export function useMedications() {
         console.log('Medications API response:', data); // Debug log
         
         if (data.success && data.data) {
-          setMedications(data.data);
+          const mapDate = (v: any): string | null => {
+            if (!v) return null;
+            if (Array.isArray(v)) {
+              const [y, m, d, hh = 0, mm = 0, ss = 0, ns = 0] = v;
+              const ms = Math.floor((ns || 0) / 1e6);
+              return new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0, ss || 0, ms).toISOString();
+            }
+            if (typeof v === 'string') return v;
+            return null;
+          };
+
+          const mapped = data.data.map((item: any) => ({
+            id: item.id,
+            patientId: item.patientId,
+            encounterId: item.encounterId ?? null,
+            medicationName: item.medicationName,
+            dosage: item.dosage,
+            instructions: item.instructions,
+            dateIssued: item.dateIssued,
+            prescribingDoctor: item.prescribingDoctor,
+            status: item.status,
+            audit: {
+              createdDate: mapDate(item.audit?.createdDate),
+              lastModifiedDate: mapDate(item.audit?.lastModifiedDate)
+            }
+          }));
+          setMedications(mapped);
         } else {
           setMedications([]);
           if (data.message) {

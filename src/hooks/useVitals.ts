@@ -1,20 +1,28 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
 
 export type ApiVital = {
-  notes: string;
-  bmi: number | null;
   id: number;
-  recordedAt?: string;
-  createdDate?: string;
+  patientId?: number;
+  encounterId?: number | null;
+  weightKg?: number;
+  weightLbs?: number;
+  heightCm?: number | null;
+  heightIn?: number | null;
   bpSystolic?: number;
   bpDiastolic?: number;
   pulse?: number;
-  temperatureF?: number;
+  respiration?: number | null;
   temperatureC?: number;
-  weightLbs?: number;
-  weightKg?: number;
+  temperatureF?: number;
   oxygenSaturation?: number;
+  bmi?: number;
+  notes?: string;
+  signed?: boolean | null;
+  recordedAt?: string;
+  createdDate?: string;
+  lastModifiedDate?: string;
 };
 
 export function useVitals() {
@@ -28,7 +36,42 @@ export function useVitals() {
         const res = await fetchWithAuth("/api/fhir/vitals/my");
         if (res.ok) {
           const data = await res.json();
-          setVitals(data.data || []);
+          const toIso = (v: any): string | undefined => {
+            if (!v) return undefined;
+            if (Array.isArray(v)) {
+              // v can be [year, month, day, hour, minute] or with seconds and nanos
+              const [y, m, d, hh = 0, mm = 0, ss = 0, ns = 0] = v;
+              const ms = Math.floor((ns || 0) / 1e6);
+              // Construct a Date in local timezone using the components
+              return new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0, ss || 0, ms).toISOString();
+            }
+            if (typeof v === "string") return v;
+            return undefined;
+          };
+
+          const mapped = (data.data || []).map((item: any) => ({
+            id: item.id,
+            patientId: item.patientId,
+            encounterId: item.encounterId ?? null,
+            weightKg: item.weightKg,
+            weightLbs: item.weightLbs,
+            heightCm: item.heightCm ?? null,
+            heightIn: item.heightIn ?? null,
+            bpSystolic: item.bpSystolic,
+            bpDiastolic: item.bpDiastolic,
+            pulse: item.pulse,
+            respiration: item.respiration ?? null,
+            temperatureC: item.temperatureC,
+            temperatureF: item.temperatureF,
+            oxygenSaturation: item.oxygenSaturation,
+            bmi: item.bmi,
+            notes: item.notes,
+            signed: item.signed ?? null,
+            recordedAt: toIso(item.recordedAt),
+            createdDate: toIso(item.createdDate),
+            lastModifiedDate: toIso(item.lastModifiedDate),
+          }));
+          setVitals(mapped);
         } else if (res.status === 403) {
           // Forbidden - set empty list and suppress error for UI continuity
           setVitals([]);

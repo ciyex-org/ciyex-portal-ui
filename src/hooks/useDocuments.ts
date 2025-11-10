@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
 
@@ -24,7 +25,19 @@ export function useDocuments() {
       const res = await fetchWithAuth("/api/fhir/portal/documents/my");
       if (res.ok) {
         const data = await res.json();
-        setDocuments(data.data || []);
+        const mapped = (data.data || []).map((item: any) => ({
+          id: item.id,
+          patientId: item.patientid,
+          category: item.category || 'Medical Records',
+          type: item.type,
+          fileName: item.filename,
+          contentType: item.contenttype,
+          description: item.description,
+          encrypted: !!item.encryptionkey,
+          createdDate: item.created_date,
+          lastModifiedDate: item.last_modified_date
+        }));
+        setDocuments(mapped);
       } else if (res.status === 403) {
         // Forbidden - set empty list and suppress error for UI continuity
         setDocuments([]);

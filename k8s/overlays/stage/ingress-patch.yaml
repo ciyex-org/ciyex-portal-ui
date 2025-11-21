@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ciyex-portal-ui
+spec:
+  tls:
+    - hosts:
+        - portal-stg.ciyex.com
+      secretName: ciyex-portal-ui-stage-tls
+  rules:
+    - host: portal-stg.ciyex.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ciyex-portal-ui-stage
+                port:
+                  number: 3000

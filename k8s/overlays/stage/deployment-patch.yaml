@@ -1,0 +1,14 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ciyex-ehr-ui
+spec:
+  template:
+    spec:
+      containers:
+        - name: ciyex-ehr-ui
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "stage"
+            - name: NEXT_PUBLIC_ENV
+              value: "staging"

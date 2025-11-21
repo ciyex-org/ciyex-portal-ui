@@ -27,7 +27,7 @@ The workflow is configured to match the backend deployment pattern:
 ```bash
 # Create service principal for stage
 az ad sp create-for-rbac \
-  --name "github-actions-ciyex-ehr-ui-stage" \
+  --name "github-actions-ciyex-portal-ui-stage" \
   --role contributor \
   --scopes /subscriptions/<subscription-id>/resourceGroups/hiniKubeStage-rg \
   --sdk-auth
@@ -50,7 +50,7 @@ az role assignment create \
 ```bash
 # Create service principal for production
 az ad sp create-for-rbac \
-  --name "github-actions-ciyex-ehr-ui-prod" \
+  --name "github-actions-ciyex-portal-ui-prod" \
   --role contributor \
   --scopes /subscriptions/<subscription-id>/resourceGroups/hiniKubeProd-rg \
   --sdk-auth
@@ -149,8 +149,8 @@ Go to your GitHub repository: **Settings → Secrets and variables → Actions**
 
 3. Check deployment:
    ```bash
-   kubectl get deployment ciyex-ehr-ui-stage
-   kubectl get pods -l app=ciyex-ehr-ui
+   kubectl get deployment ciyex-portal-ui-stage
+   kubectl get pods -l app=ciyex-portal-ui
    ```
 
 4. Visit: https://stg.ciyex.com
@@ -175,8 +175,8 @@ Go to your GitHub repository: **Settings → Secrets and variables → Actions**
 
 5. Check deployment:
    ```bash
-   kubectl get deployment ciyex-ehr-ui-prod
-   kubectl get pods -l app=ciyex-ehr-ui
+   kubectl get deployment ciyex-portal-ui-prod
+   kubectl get pods -l app=ciyex-portal-ui
    ```
 
 6. Visit: https://app.ciyex.com
@@ -224,7 +224,7 @@ az aks show --resource-group hiniKubeStage-rg --name hiniKubeStage
 kubectl kustomize k8s/overlays/stage/
 
 # Check pod logs
-kubectl logs -l app=ciyex-ehr-ui --tail=100
+kubectl logs -l app=ciyex-portal-ui --tail=100
 ```
 
 ### Workflow Not Triggering
@@ -260,8 +260,8 @@ DEPLOYMENT.md             # Quick reference guide
 
 Images are tagged with:
 - **Version**: `v1.0.<github.run_number>`
-- **Stage**: `hinikubestageacr.azurecr.io/ciyex-ehr-ui-stage:v1.0.123`
-- **Production**: `hinikubestageacr.azurecr.io/ciyex-ehr-ui-prod:v1.0.123`
+- **Stage**: `hinikubestageacr.azurecr.io/ciyex-portal-ui-stage:v1.0.123`
+- **Production**: `hinikubestageacr.azurecr.io/ciyex-portal-ui-prod:v1.0.123`
 
 The run number automatically increments with each workflow run.
 

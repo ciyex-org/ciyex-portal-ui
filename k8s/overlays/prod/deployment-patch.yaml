@@ -1,12 +1,12 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ciyex-ehr-ui
+  name: ciyex-portal-ui
 spec:
   template:
     spec:
       containers:
-        - name: ciyex-ehr-ui
+        - name: ciyex-portal-ui
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: "prod"

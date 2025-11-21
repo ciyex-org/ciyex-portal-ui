@@ -25,13 +25,13 @@ Automated CI/CD pipeline for production environment:
 - Runs PR checks: linting, type checking, tests, and Docker build validation
 
 **Push to `main`:**
-- Builds Docker image: `hinikubestageacr.azurecr.io/ciyex-ehr-ui-stage:v1.0.<run_number>`
+- Builds Docker image: `hinikubestageacr.azurecr.io/ciyex-portal-ui-stage:v1.0.<run_number>`
 - Deploys to **Stage** environment (stg.ciyex.com)
 - Sends Teams notification
 
 ### `deploy-prod.yml`
 **Push to `release/**`:**
-- Builds Docker image: `hinikubestageacr.azurecr.io/ciyex-ehr-ui-prod:v1.0.<run_number>`
+- Builds Docker image: `hinikubestageacr.azurecr.io/ciyex-portal-ui-prod:v1.0.<run_number>`
 - Deploys to **Production** environment (app.ciyex.com)
 - Creates deployment tag: `prod-<version>-<timestamp>`
 - Sends Teams notification
@@ -71,7 +71,7 @@ Configure these secrets in your GitHub repository settings:
 ```bash
 # Create service principal
 az ad sp create-for-rbac \
-  --name "github-actions-ciyex-ehr-ui" \
+  --name "github-actions-ciyex-portal-ui" \
   --role contributor \
   --scopes /subscriptions/<subscription-id>/resourceGroups/<resource-group> \
   --sdk-auth
@@ -170,8 +170,8 @@ git push origin release/v1.0.0
 - Report deployment status
 
 **Image Tags**:
-- Stage: `hinikubestageacr.azurecr.io/ciyex-ehr-ui-stage:v1.0.<run_number>`
-- Production: `hinikubestageacr.azurecr.io/ciyex-ehr-ui-prod:v1.0.<run_number>`
+- Stage: `hinikubestageacr.azurecr.io/ciyex-portal-ui-stage:v1.0.<run_number>`
+- Production: `hinikubestageacr.azurecr.io/ciyex-portal-ui-prod:v1.0.<run_number>`
 
 ### 3. Deploy to Production (`deploy-prod`)
 **Triggers**: Push to `release/**` only  
@@ -223,23 +223,23 @@ GitHub Repository → Actions tab
 ### Check Deployment Status
 ```bash
 # Stage
-kubectl get deployment ciyex-ehr-ui-stage
-kubectl get pods -l app=ciyex-ehr-ui
-kubectl logs -l app=ciyex-ehr-ui --tail=100
+kubectl get deployment ciyex-portal-ui-stage
+kubectl get pods -l app=ciyex-portal-ui
+kubectl logs -l app=ciyex-portal-ui --tail=100
 
 # Production
-kubectl get deployment ciyex-ehr-ui-prod
-kubectl get pods -l app=ciyex-ehr-ui
-kubectl logs -l app=ciyex-ehr-ui --tail=100
+kubectl get deployment ciyex-portal-ui-prod
+kubectl get pods -l app=ciyex-portal-ui
+kubectl logs -l app=ciyex-portal-ui --tail=100
 ```
 
 ### Rollback if Needed
 ```bash
 # Stage
-kubectl rollout undo deployment/ciyex-ehr-ui-stage
+kubectl rollout undo deployment/ciyex-portal-ui-stage
 
 # Production
-kubectl rollout undo deployment/ciyex-ehr-ui-prod
+kubectl rollout undo deployment/ciyex-portal-ui-prod
 ```
 
 ## Troubleshooting
@@ -264,8 +264,8 @@ kubectl rollout undo deployment/ciyex-ehr-ui-prod
 
 ### Test Docker Build
 ```bash
-docker build -t ciyex-ehr-ui:test .
-docker run -p 3000:3000 ciyex-ehr-ui:test
+docker build -t ciyex-portal-ui:test .
+docker run -p 3000:3000 ciyex-portal-ui:test
 ```
 
 ### Test Kustomize Manifests

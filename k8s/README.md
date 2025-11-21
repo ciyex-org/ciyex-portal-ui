@@ -29,13 +29,13 @@ k8s/
 - **Domain**: stg.ciyex.com
 - **Replicas**: 1
 - **Namespace**: default
-- **TLS Secret**: ciyex-ehr-ui-stage-tls
+- **TLS Secret**: ciyex-portal-ui-stage-tls
 
 ### Production Environment
 - **Domain**: app.ciyex.com
 - **Replicas**: 2
 - **Namespace**: default
-- **TLS Secret**: ciyex-ehr-ui-prod-tls
+- **TLS Secret**: ciyex-portal-ui-prod-tls
 - **Resource Limits**: 1Gi memory, 500m CPU
 
 ## Prerequisites
@@ -78,14 +78,14 @@ Before deploying, update the image URL and tag in the respective kustomization.y
 **For Stage:**
 ```bash
 cd k8s/overlays/stage
-kustomize edit set image ciyex-ehr-ui=your-registry/ciyex-ehr-ui:v1.0.0
+kustomize edit set image ciyex-portal-ui=your-registry/ciyex-portal-ui:v1.0.0
 kubectl apply -k .
 ```
 
 **For Production:**
 ```bash
 cd k8s/overlays/prod
-kustomize edit set image ciyex-ehr-ui=your-registry/ciyex-ehr-ui:v1.0.0
+kustomize edit set image ciyex-portal-ui=your-registry/ciyex-portal-ui:v1.0.0
 kubectl apply -k .
 ```
 
@@ -94,13 +94,13 @@ kubectl apply -k .
 ```bash
 # For Stage
 kubectl kustomize k8s/overlays/stage | \
-  sed "s|IMAGE_URL|your-registry/ciyex-ehr-ui|g" | \
+  sed "s|IMAGE_URL|your-registry/ciyex-portal-ui|g" | \
   sed "s|IMAGE_TAG|v1.0.0|g" | \
   kubectl apply -f -
 
 # For Production
 kubectl kustomize k8s/overlays/prod | \
-  sed "s|IMAGE_URL|your-registry/ciyex-ehr-ui|g" | \
+  sed "s|IMAGE_URL|your-registry/ciyex-portal-ui|g" | \
   sed "s|IMAGE_TAG|v1.0.0|g" | \
   kubectl apply -f -
 ```
@@ -111,56 +111,56 @@ kubectl kustomize k8s/overlays/prod | \
 
 ```bash
 # Stage
-kubectl get deployment ciyex-ehr-ui-stage
-kubectl get pods -l app=ciyex-ehr-ui
+kubectl get deployment ciyex-portal-ui-stage
+kubectl get pods -l app=ciyex-portal-ui
 
 # Production
-kubectl get deployment ciyex-ehr-ui-prod
-kubectl get pods -l app=ciyex-ehr-ui
+kubectl get deployment ciyex-portal-ui-prod
+kubectl get pods -l app=ciyex-portal-ui
 ```
 
 ### Check service
 
 ```bash
 # Stage
-kubectl get service ciyex-ehr-ui-stage
+kubectl get service ciyex-portal-ui-stage
 
 # Production
-kubectl get service ciyex-ehr-ui-prod
+kubectl get service ciyex-portal-ui-prod
 ```
 
 ### Check ingress
 
 ```bash
 # Stage
-kubectl get ingress ciyex-ehr-ui-ingress-stage
-kubectl describe ingress ciyex-ehr-ui-ingress-stage
+kubectl get ingress ciyex-portal-ui-ingress-stage
+kubectl describe ingress ciyex-portal-ui-ingress-stage
 
 # Production
-kubectl get ingress ciyex-ehr-ui-ingress-prod
-kubectl describe ingress ciyex-ehr-ui-ingress-prod
+kubectl get ingress ciyex-portal-ui-ingress-prod
+kubectl describe ingress ciyex-portal-ui-ingress-prod
 ```
 
 ### Check TLS certificates
 
 ```bash
 # Stage
-kubectl get certificate ciyex-ehr-ui-stage-tls
-kubectl describe certificate ciyex-ehr-ui-stage-tls
+kubectl get certificate ciyex-portal-ui-stage-tls
+kubectl describe certificate ciyex-portal-ui-stage-tls
 
 # Production
-kubectl get certificate ciyex-ehr-ui-prod-tls
-kubectl describe certificate ciyex-ehr-ui-prod-tls
+kubectl get certificate ciyex-portal-ui-prod-tls
+kubectl describe certificate ciyex-portal-ui-prod-tls
 ```
 
 ## Rollback
 
 ```bash
 # Stage
-kubectl rollout undo deployment/ciyex-ehr-ui-stage
+kubectl rollout undo deployment/ciyex-portal-ui-stage
 
 # Production
-kubectl rollout undo deployment/ciyex-ehr-ui-prod
+kubectl rollout undo deployment/ciyex-portal-ui-prod
 ```
 
 ## Delete Deployment
@@ -204,7 +204,7 @@ stage('Deploy to Stage') {
     steps {
         sh '''
             kubectl kustomize k8s/overlays/stage | \
-              sed "s|IMAGE_URL|${DOCKER_REGISTRY}/ciyex-ehr-ui|g" | \
+              sed "s|IMAGE_URL|${DOCKER_REGISTRY}/ciyex-portal-ui|g" | \
               sed "s|IMAGE_TAG|${BUILD_TAG}|g" | \
               kubectl apply -f -
         '''
@@ -218,7 +218,7 @@ stage('Deploy to Production') {
     steps {
         sh '''
             kubectl kustomize k8s/overlays/prod | \
-              sed "s|IMAGE_URL|${DOCKER_REGISTRY}/ciyex-ehr-ui|g" | \
+              sed "s|IMAGE_URL|${DOCKER_REGISTRY}/ciyex-portal-ui|g" | \
               sed "s|IMAGE_TAG|${BUILD_TAG}|g" | \
               kubectl apply -f -
         '''

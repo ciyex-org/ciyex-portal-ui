@@ -120,7 +120,7 @@ Both workflows use consistent environment variables:
 **Stage:**
 ```yaml
 ACR_NAME: hinikubestageacr.azurecr.io
-IMAGE_NAME: ciyex-ehr-ui-stage
+IMAGE_NAME: ciyex-portal-ui-stage
 CLUSTER_NAME: hiniKubeStage
 RESOURCE_GROUP: hiniKubeStage-rg
 VERSION: v1.0.${{ github.run_number }}
@@ -129,7 +129,7 @@ VERSION: v1.0.${{ github.run_number }}
 **Production:**
 ```yaml
 ACR_NAME: hinikubestageacr.azurecr.io
-IMAGE_NAME: ciyex-ehr-ui-prod
+IMAGE_NAME: ciyex-portal-ui-prod
 CLUSTER_NAME: hiniKubeProd
 RESOURCE_GROUP: hiniKubeProd-rg
 VERSION: v1.0.${{ github.run_number }}

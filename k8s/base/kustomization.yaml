@@ -7,4 +7,4 @@ resources:
   - ingress.yaml
 
 commonLabels:
-  app: ciyex-ehr-ui
+  app: ciyex-portal-ui

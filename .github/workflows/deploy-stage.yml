@@ -137,7 +137,6 @@ jobs:
       - name: Send Microsoft Teams notification
         run: |
           echo "VERSION=v1.0.${{ github.run_number }}" >> $GITHUB_ENV
-          echo "Deploying Portal UI version: v1.0.${{ github.run_number }}" >> $GITHUB_OUTPUT
           TEAMS_WEBHOOK="${{ secrets.TEAMS_WEBHOOK_URL }}"
           if [ -z "$TEAMS_WEBHOOK" ]; then
             echo "⚠️ TEAMS_WEBHOOK_URL secret not configured, skipping notification"

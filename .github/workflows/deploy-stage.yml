@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: stage
-      url: https://stg.ciyex.com
+      url: https://portal-stg.ciyex.com
 
     steps:
       - name: Checkout code

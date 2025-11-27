@@ -1,10 +1,10 @@
 "use client";
 
 import AdminLayout from "@/app/(admin)/layout";
-import { useReports } from "@/hooks/useReports";
+import { useDocuments } from "@/hooks/useDocuments";
 
 export default function ReportsPage() {
-  const { reports, loading, error } = useReports();
+  const { documents, loading, error, downloadDocument, viewDocument, archiveDocument } = useDocuments();
 
   if (loading) return (
     <AdminLayout>
@@ -50,7 +50,7 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        {reports.length === 0 ? (
+        {documents.length === 0 ? (
           <div className="text-center py-12">
             <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -71,7 +71,7 @@ export default function ReportsPage() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Reports</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{reports.length}</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{documents.length}</p>
                   </div>
                 </div>
               </div>
@@ -85,8 +85,8 @@ export default function ReportsPage() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Report Types</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {new Set(reports.map(r => r.category)).size}
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {new Set(documents.map(r => r.category)).size}
                     </p>
                   </div>
                 </div>
@@ -102,7 +102,7 @@ export default function ReportsPage() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Encrypted</p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {reports.filter(r => r.encrypted).length}
+                      {documents.filter(r => r.encrypted).length}
                     </p>
                   </div>
                 </div>
@@ -178,7 +178,7 @@ export default function ReportsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
-                    {reports.map((report, i) => (
+                    {documents.map((report, i) => (
                       <tr key={report.id || i} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200">
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="flex items-center">
@@ -243,15 +243,75 @@ export default function ReportsPage() {
                         </td>
 
                         <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                          <button className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mr-4">
-                            View
+                          <button
+                            onClick={async () => {
+                              try {
+                                const url = await viewDocument(report.id);
+                                if (url) window.open(url, '_blank');
+                                else console.error('Unable to get view URL');
+                              } catch (e) {
+                                console.error(e);
+                              }
+                            }}
+                            aria-label="View report"
+                            title="View"
+                            className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mr-4"
+                          >
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            <span className="sr-only">View</span>
                           </button>
-                          <button className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mr-4">
-                            Download
+
+                          <button
+                            onClick={async () => {
+                              try {
+                                await downloadDocument(report.id);
+                              } catch (e) {
+                                console.error(e);
+                              }
+                            }}
+                            aria-label="Download report"
+                            title="Download"
+                            className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mr-4"
+                          >
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v12m0 0l-4-4m4 4l4-4" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 21H4a1 1 0 01-1-1v-2a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-1 1z" />
+                            </svg>
+                            <span className="sr-only">Download</span>
                           </button>
-                          <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
-                            Delete
-                          </button>
+
+                          {report.archived ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+                              <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.25 7.5L12 13 3.75 7.5" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6" />
+                              </svg>
+                              <span className="sr-only">Archived</span>
+                            </span>
+                          ) : (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const ok = await archiveDocument(report.id);
+                                  if (!ok) console.error('Archive failed');
+                                } catch (e) {
+                                  console.error(e);
+                                }
+                              }}
+                              aria-label="Archive report"
+                              title="Archive"
+                              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300"
+                            >
+                              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M7 7v10a2 2 0 002 2h6a2 2 0 002-2V7" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 11h4" />
+                              </svg>
+                              <span className="sr-only">Archive</span>
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -280,7 +340,7 @@ export default function ReportsPage() {
                     </div>
                   </div>
                   <div className="text-xs">
-                    Showing {reports.length} report{reports.length !== 1 ? 's' : ''}
+                    Showing {documents.length} report{documents.length !== 1 ? 's' : ''}
                   </div>
                 </div>
               </div>

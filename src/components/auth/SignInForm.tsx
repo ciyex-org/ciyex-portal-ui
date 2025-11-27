@@ -242,12 +242,6 @@ export default function SignInForm() {
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                                 {keycloakEnabled ? 'Sign in with Aran (Keycloak)' : 'Use your Aran account or local credentials'}
                             </p>
-                            {process.env.NODE_ENV === 'development' && (
-                                <div className="mt-2 text-xs text-gray-500">
-                                    <span className="inline-block mr-2">Keycloak enabled: <strong>{String(keycloakEnabled)}</strong></span>
-                                    <span className="inline-block">Keycloak URL: <code className="text-xs">{keycloakUrl || '—'}</code></span>
-                                </div>
-                            )}
                         </div>
 
                         {/* Keycloak Sign In Button */}

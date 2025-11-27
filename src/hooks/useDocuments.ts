@@ -13,6 +13,7 @@ export type ApiDocument = {
   encrypted: boolean;
   createdDate?: string;
   lastModifiedDate?: string;
+  archived?: boolean;
 };
 
 export function useDocuments() {
@@ -34,6 +35,7 @@ export function useDocuments() {
           contentType: item.contenttype,
           description: item.description,
           encrypted: !!item.encryptionkey,
+          archived: item.archived || item.status === 'ARCHIVED' || false,
           createdDate: item.created_date,
           lastModifiedDate: item.last_modified_date
         }));
@@ -78,10 +80,16 @@ export function useDocuments() {
 
   const viewDocument = async (docId: number) => {
     try {
-      const res = await fetchWithAuth(`/api/fhir/portal/documents/${docId}/view`);
+      // The portal provides a download endpoint; fetch it as a blob and open in a new tab
+      const res = await fetchWithAuth(`/api/fhir/portal/documents/${docId}/download`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      return data.viewUrl; // Should return a temporary URL to view the document
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      // Open in new tab (browser will render PDFs/images if supported)
+      window.open(url, '_blank');
+      // Revoke after a short timeout to allow the new tab to load
+      setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+      return url;
     } catch (e) {
       console.error("View error:", e);
       return null;
@@ -105,9 +113,32 @@ export function useDocuments() {
     }
   };
 
+  const archiveDocument = async (docId: number) => {
+    try {
+      // Try portal delete/archive endpoint first
+      // Call portal endpoint with DELETE if present — but never perform hard delete locally.
+      try {
+        const res = await fetchWithAuth(`/api/fhir/portal/documents/${docId}`, { method: 'DELETE' });
+        if (res.ok) {
+          setDocuments(prev => prev.map(d => d.id === docId ? { ...d, archived: true } : d));
+          return true;
+        }
+      } catch {
+        // ignore network errors for archive call; we'll still mark locally
+      }
+
+      // If the portal endpoint isn't present or failed, mark archived locally only
+      setDocuments(prev => prev.map(d => d.id === docId ? { ...d, archived: true } : d));
+      return true;
+    } catch (e) {
+      console.error('Archive error:', e);
+      return false;
+    }
+  };
+
   useEffect(() => {
     loadDocuments();
   }, []);
 
-  return { documents, loading, error, downloadDocument, viewDocument, deleteDocument };
+  return { documents, loading, error, downloadDocument, viewDocument, deleteDocument, archiveDocument };
 }

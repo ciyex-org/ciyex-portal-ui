@@ -66,11 +66,11 @@ const MessagesIcon = (
   </svg>
 );
 
-const DocumentsIcon = (
-  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 20h9M12 4h9M4 9h16M4 15h16"/>
-  </svg>
-);
+// const DocumentsIcon = (
+//   <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+//     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 20h9M12 4h9M4 9h16M4 15h16"/>
+//   </svg>
+// );
 
 const EducationIcon = (
   <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -112,14 +112,14 @@ const SettingsIcon = (
 const navItems: NavItem[] = [
   { name: "Dashboard", icon: DashboardIcon, path: "/dashboard" },
   // { name: "Profile", icon: ProfileIcon, path: "/profile" },
-  { name: "Demographics", icon: DemographicsIcon, path: "/profile" },
+  { name: "Demographics", icon: DemographicsIcon, path: "/demographics" },
   { name: "Appointments", icon: AppointmentIcon, path: "/appointments" },
   // { name: "Encounters", icon: EncounterIcon, path: "/encounters" },
   { name: "Vitals", icon: VitalsIcon, path: "/vitals" },
   { name: "Medications", icon: MedicationsIcon, path: "/medications" },
   { name: "Allergies & History", icon: AllergiesIcon, path: "/allergies" },
   { name: "Messages", icon: MessagesIcon, path: "/messages" },
-  { name: "Documents", icon: DocumentsIcon, path: "/documents" },
+  // { name: "Documents", icon: DocumentsIcon, path: "/documents" },
   { name: "Patient Education", icon: EducationIcon, path: "/education" },
   { name: "Billing", icon: BillingIcon, path: "/billing" },
   { name: "Insurance", icon: InsuranceIcon, path: "/insurance" },

@@ -124,20 +124,21 @@ function PatientDashboard() {
             try {
                 const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
 
-                // Fetch patient information
-                const patientResponse = await fetchWithAuth(`${apiBase}/api/portal/patient/me`);
-                const patientData = await patientResponse.json();
-
-                if (patientData.success && patientData.data) {
-                    setPatient(patientData.data);
-                } else {
-                    setError(patientData.message || 'Failed to load patient information');
-                    if (patientResponse.status === 401) {
-                        localStorage.removeItem('token');
-                        localStorage.removeItem('user');
-                        router.push('/signin');
-                    }
-                    return;
+                // Get basic user info from localStorage instead of API call
+                const userData = JSON.parse(user);
+                if (userData) {
+                    // Set minimal patient data from localStorage
+                    setPatient({
+                        id: 0,
+                        portalUserId: 0,
+                        firstName: userData.firstName || userData.name?.split(' ')[0] || 'Patient',
+                        lastName: userData.lastName || userData.name?.split(' ')[1] || '',
+                        email: userData.email || '',
+                        phoneNumber: userData.phoneNumber || '',
+                        dateOfBirth: userData.dateOfBirth || new Date().toISOString().split('T')[0],
+                        gender: userData.gender || '',
+                        status: 'active'
+                    });
                 }
 
                 // Fetch upcoming appointments

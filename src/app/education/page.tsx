@@ -71,11 +71,11 @@ export default function PatientEducationPage() {
     if (!mounted) return;
     
     try {
-      // Get the current user's patient ID from JWT or session
-      const patientId = localStorage.getItem('ehrPatientId') || '21'; // Emma's patient ID
-      
+      // Backend automatically resolves patient from JWT email claim
+      // Flow: JWT email → PortalUser → PortalPatient → ehrPatientId → assignments
+      // This ensures each patient sees ONLY their own assignments (no hardcoded IDs!)
       const res = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/patient-education-assignments/patient/${patientId}`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/portal/patient-education-assignments/my-assignments`
       );
       const response = await res.json();
       // Backend returns ApiResponse<List<PatientEducationAssignmentDto>>

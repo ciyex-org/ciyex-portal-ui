@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 
-interface GpsBillingCard {
+interface BillingCardData {
     id: number;
     brand: string;
     last4: string;
@@ -18,7 +18,7 @@ interface ApiResponse<T> {
 }
 
 const GpsBillingCard: React.FC = () => {
-    const [cards, setCards] = useState<GpsBillingCard[]>([]);
+    const [cards, setCards] = useState<BillingCardData[]>([]);
     const [showAddForm, setShowAddForm] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [toasts, setToasts] = useState<{ id: number; message: string; type: "success" | "error" }[]>([]);
@@ -55,7 +55,7 @@ const GpsBillingCard: React.FC = () => {
             });
             
             if (response.ok) {
-                const result: ApiResponse<GpsBillingCard[]> = await response.json();
+                const result: ApiResponse<BillingCardData[]> = await response.json();
                 if (result.success) {
                     setCards(result.data);
                 }
@@ -127,7 +127,7 @@ const GpsBillingCard: React.FC = () => {
             });
 
             if (response.ok) {
-                const result: ApiResponse<GpsBillingCard> = await response.json();
+                const result: ApiResponse<BillingCardData> = await response.json();
                 if (result.success) {
                     showToast("GPS card saved successfully!", "success");
                     setShowAddForm(false);

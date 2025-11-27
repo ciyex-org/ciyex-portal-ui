@@ -166,7 +166,6 @@ export default async function handler(
     }
 
     // Try parse JSON only when there's a body
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let json: any;
     try {
       json = JSON.parse(text);

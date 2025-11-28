@@ -15,6 +15,9 @@ RUN pnpm install --frozen-lockfile
 # Copy source code
 COPY . .
 
+# Copy stage env for production build
+COPY .env.stage .env.production
+
 # Build the application
 RUN pnpm run build
 

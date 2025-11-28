@@ -97,6 +97,23 @@ jobs:
           echo "Updated kustomization.yaml:"
           cat k8s/overlays/stage/kustomization.yaml
 
+      - name: Create .env.stage from secrets
+        run: |
+          mkdir -p k8s/overlays/stage
+          cat > k8s/overlays/stage/.env.stage <<'EOF'
+          PORT=3001
+          # Backend API
+          NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL_STG }}
+
+          # Keycloak
+          NEXT_PUBLIC_KEYCLOAK_ENABLED=${{ secrets.NEXT_PUBLIC_KEYCLOAK_ENABLED_STG }}
+          NEXT_PUBLIC_KEYCLOAK_URL=${{ secrets.NEXT_PUBLIC_KEYCLOAK_URL_STG }}
+          NEXT_PUBLIC_KEYCLOAK_REALM=${{ secrets.NEXT_PUBLIC_KEYCLOAK_REALM_STG }}
+          NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=${{ secrets.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID_STG }}
+          EOF
+          echo "Created k8s/overlays/stage/.env.stage (first 20 lines):"
+          head -n 20 k8s/overlays/stage/.env.stage || true
+
       - name: Deploy to Stage
         run: kubectl apply -k k8s/overlays/stage/
 

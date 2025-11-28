@@ -10,8 +10,8 @@ nameSuffix: -stage
 
 images:
   - name: ciyex-portal-ui
-    newName: IMAGE_URL
-    newTag: IMAGE_TAG
+    newName: hinikubestageacr.azurecr.io/ciyex-portal-ui-stage
+    newTag: stage
 
 replicas:
   - name: ciyex-portal-ui

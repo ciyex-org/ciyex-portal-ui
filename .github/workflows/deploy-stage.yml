@@ -78,6 +78,15 @@ jobs:
       - name: Azure ACR Login
         run: az acr login --name hinikubestageacr
 
+      - name: Prepare Stage Environment
+        run: |
+          if [ -f .env.stage ]; then
+            cp .env.stage .env.production
+            echo "Copied .env.stage -> .env.production for stage build"
+          else
+            echo "Warning: .env.stage not found in repo root"
+          fi
+
       - name: Build and Push Docker Image
         run: |
           docker build -t ${{ env.ACR_NAME }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} .
@@ -96,23 +105,6 @@ jobs:
           sed -i "s|newTag: IMAGE_TAG|newTag: ${{ env.VERSION }}|g" k8s/overlays/stage/kustomization.yaml
           echo "Updated kustomization.yaml:"
           cat k8s/overlays/stage/kustomization.yaml
-
-      - name: Create .env.stage from secrets
-        run: |
-          mkdir -p k8s/overlays/stage
-          cat > k8s/overlays/stage/.env.stage <<'EOF'
-          PORT=3001
-          # Backend API
-          NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL_STG }}
-
-          # Keycloak
-          NEXT_PUBLIC_KEYCLOAK_ENABLED=${{ secrets.NEXT_PUBLIC_KEYCLOAK_ENABLED_STG }}
-          NEXT_PUBLIC_KEYCLOAK_URL=${{ secrets.NEXT_PUBLIC_KEYCLOAK_URL_STG }}
-          NEXT_PUBLIC_KEYCLOAK_REALM=${{ secrets.NEXT_PUBLIC_KEYCLOAK_REALM_STG }}
-          NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=${{ secrets.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID_STG }}
-          EOF
-          echo "Created k8s/overlays/stage/.env.stage (first 20 lines):"
-          head -n 20 k8s/overlays/stage/.env.stage || true
 
       - name: Deploy to Stage
         run: kubectl apply -k k8s/overlays/stage/

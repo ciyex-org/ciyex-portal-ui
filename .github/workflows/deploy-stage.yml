@@ -55,7 +55,13 @@ jobs:
 
       - name: Build Docker image (no push)
         run: |
-          docker build -t ${{ env.ACR_NAME }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} .
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL=https://stg.ciyex.com \
+            --build-arg NEXT_PUBLIC_KEYCLOAK_ENABLED=true \
+            --build-arg NEXT_PUBLIC_KEYCLOAK_URL=https://aran-stg.zpoa.com \
+            --build-arg NEXT_PUBLIC_KEYCLOAK_REALM=master \
+            --build-arg NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=ciyex-app \
+            -t ${{ env.ACR_NAME }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} .
           echo "✅ PR image build successful: ${{ env.ACR_NAME }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}"
 
   deploy-stage:
@@ -78,18 +84,15 @@ jobs:
       - name: Azure ACR Login
         run: az acr login --name hinikubestageacr
 
-      - name: Prepare Stage Environment
-        run: |
-          if [ -f .env.stage ]; then
-            cp .env.stage .env.production
-            echo "Copied .env.stage -> .env.production for stage build"
-          else
-            echo "Warning: .env.stage not found in repo root"
-          fi
-
       - name: Build and Push Docker Image
         run: |
-          docker build -t ${{ env.ACR_NAME }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} .
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL=https://stg.ciyex.com \
+            --build-arg NEXT_PUBLIC_KEYCLOAK_ENABLED=true \
+            --build-arg NEXT_PUBLIC_KEYCLOAK_URL=https://aran-stg.zpoa.com \
+            --build-arg NEXT_PUBLIC_KEYCLOAK_REALM=master \
+            --build-arg NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=ciyex-app \
+            -t ${{ env.ACR_NAME }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} .
           docker push ${{ env.ACR_NAME }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
           echo "✅ Image pushed: ${{ env.ACR_NAME }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}"
 

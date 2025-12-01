@@ -70,7 +70,7 @@ export default function DemographicsPage() {
     async function loadDemographics() {
       try {
         const res = await fetchWithAuth(
-          // "http://localhost:8080/api/portal/patient/me",
+           "http://localhost:8080/api/portal/patient/me",
           { headers: { Accept: "application/json" } }
         );
         if (!res.ok) throw new Error("Failed to fetch demographics");

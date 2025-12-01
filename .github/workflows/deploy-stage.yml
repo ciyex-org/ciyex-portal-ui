@@ -84,17 +84,17 @@ jobs:
       - name: Azure ACR Login
         run: az acr login --name hinikubestageacr
 
-      - name: Build and Push Docker Image
+      - name: Build and Push Docker Image to ACR
         run: |
-          docker build \
+          az acr build \
+            --registry hinikubestageacr \
+            --image ${{ env.IMAGE_NAME }}:${{ env.VERSION }} \
             --build-arg NEXT_PUBLIC_API_URL=https://stg.ciyex.com \
             --build-arg NEXT_PUBLIC_KEYCLOAK_ENABLED=true \
             --build-arg NEXT_PUBLIC_KEYCLOAK_URL=https://aran-stg.zpoa.com \
             --build-arg NEXT_PUBLIC_KEYCLOAK_REALM=master \
             --build-arg NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=ciyex-app \
-            -t ${{ env.ACR_NAME }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} .
-          docker push ${{ env.ACR_NAME }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
-          echo "✅ Image pushed: ${{ env.ACR_NAME }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}"
+            --file Dockerfile .
 
       - name: Set AKS context
         uses: azure/aks-set-context@v3

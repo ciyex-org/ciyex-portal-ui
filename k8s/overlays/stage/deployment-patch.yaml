@@ -12,8 +12,6 @@ spec:
               value: "stage"
             - name: NEXT_PUBLIC_ENV
               value: "staging"
-            - name: PORT
-              value: "3001"
             - name: NEXT_PUBLIC_API_URL
               value: "https://stg.ciyex.com"
             - name: NEXT_PUBLIC_KEYCLOAK_ENABLED

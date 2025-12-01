@@ -4,19 +4,14 @@ FROM node:24-alpine AS builder
 RUN npm install -g pnpm@9
 WORKDIR /app
 
-# Copy package files
 COPY package.json pnpm-lock.yaml ./
 
-# Copy stage environment file
-COPY .env.stage .env.production
-
-# Install dependencies
 RUN pnpm install --frozen-lockfile
 
-# Copy source
+# Copy project files and use stage environment
 COPY . .
+COPY .env.stage .env.production.local
 
-# Build
 RUN pnpm run build
 
 # Production stage

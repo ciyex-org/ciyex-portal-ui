@@ -23,6 +23,5 @@ patches:
 
 configMapGenerator:
   - name: portal-ui-config
-    literals:
-      - NODE_ENV=staging
-      - NEXT_PUBLIC_API_URL=https://stg.ciyex.com/api
+    envs:
+      - .env.stage

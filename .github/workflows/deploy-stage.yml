@@ -55,13 +55,7 @@ jobs:
 
       - name: Build Docker image (no push)
         run: |
-          docker build \
-            --build-arg NEXT_PUBLIC_API_URL=https://stg.ciyex.com \
-            --build-arg NEXT_PUBLIC_KEYCLOAK_ENABLED=true \
-            --build-arg NEXT_PUBLIC_KEYCLOAK_URL=https://aran-stg.zpoa.com \
-            --build-arg NEXT_PUBLIC_KEYCLOAK_REALM=master \
-            --build-arg NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=ciyex-app \
-            -t ${{ env.ACR_NAME }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} .
+          docker build -t ${{ env.ACR_NAME }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} .
           echo "✅ PR image build successful: ${{ env.ACR_NAME }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}"
 
   deploy-stage:
@@ -89,11 +83,6 @@ jobs:
           az acr build \
             --registry hinikubestageacr \
             --image ${{ env.IMAGE_NAME }}:${{ env.VERSION }} \
-            --build-arg NEXT_PUBLIC_API_URL=https://stg.ciyex.com \
-            --build-arg NEXT_PUBLIC_KEYCLOAK_ENABLED=true \
-            --build-arg NEXT_PUBLIC_KEYCLOAK_URL=https://aran-stg.zpoa.com \
-            --build-arg NEXT_PUBLIC_KEYCLOAK_REALM=master \
-            --build-arg NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=ciyex-app \
             --file Dockerfile .
 
       - name: Set AKS context

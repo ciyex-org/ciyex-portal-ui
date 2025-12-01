@@ -1,24 +1,25 @@
-# -------------------------------
-# BUILD STAGE
-# -------------------------------
+# Build stage
 FROM node:24-alpine AS builder
 
 RUN npm install -g pnpm@9
 WORKDIR /app
 
+# Copy package files
 COPY package.json pnpm-lock.yaml ./
+
+# Copy stage environment file
+COPY .env.stage .env.production
+
+# Install dependencies
 RUN pnpm install --frozen-lockfile
 
-# Copy full source
+# Copy source
 COPY . .
 
-# Build Next.js app
+# Build
 RUN pnpm run build
 
-
-# -------------------------------
-# PRODUCTION STAGE
-# -------------------------------
+# Production stage
 FROM node:24-alpine AS runner
 
 RUN npm install -g pnpm@9
@@ -35,6 +36,7 @@ COPY --from=builder /app/next.config.mjs ./next.config.mjs
 
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 RUN chown -R nextjs:nodejs /app
+
 USER nextjs
 
 EXPOSE 3000

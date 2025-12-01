@@ -78,15 +78,6 @@ jobs:
       - name: Azure ACR Login
         run: az acr login --name hinikubestageacr
 
-      - name: Prepare Stage Environment
-        run: |
-          if [ -f .env.stage ]; then
-            cp .env.stage .env.production
-            echo "Copied .env.stage -> .env.production for stage build"
-          else
-            echo "Warning: .env.stage not found in repo root"
-          fi
-
       - name: Build and Push Docker Image
         run: |
           docker build -t ${{ env.ACR_NAME }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} .

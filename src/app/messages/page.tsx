@@ -657,11 +657,16 @@ export default function MessagingPage() {
                 return [];
             }
 
-            const json: ApiResponse<Attachment[]> = await res.json();
+            const json: ApiResponse<any[]> = await res.json();
             if (json.success && json.data) {
                 return json.data.map(attachment => ({
-                    ...attachment,
-                    type: getFileType(attachment.contentType || attachment.fileName),
+                    id: String(attachment.id),
+                    fileName: attachment.fileName,
+                    contentType: attachment.contentType,
+                    fileSize: parseFloat(attachment.fileSize) || 0, // Convert string to number
+                    uploadedAt: attachment.createdDate,
+                    uploadedBy: attachment.uploadedBy,
+                    type: getFileType(attachment.contentType, attachment.fileName),
                     downloadUrl: `${process.env.NEXT_PUBLIC_API_URL}/api/portal/messages/${messageId}/attachments/${attachment.id}/download`
                 }));
             }
@@ -736,6 +741,12 @@ export default function MessagingPage() {
         if (!json.success) {
             throw new Error(json.message || 'Failed to upload attachment');
         }
+    };
+
+    /* ---- Upload Multiple Attachments ---- */
+    const uploadMultipleAttachments = async (messageId: number, files: File[]): Promise<void> => {
+        const uploadPromises = files.map(file => uploadMessageAttachment(messageId, file));
+        await Promise.all(uploadPromises);
     };
 
     /* ---- Helper Functions ---- */
@@ -836,9 +847,12 @@ export default function MessagingPage() {
                     const senderName = comm.fromName || "Unknown User";
                     const recipientName = comm.toNames?.[0] || "Unknown Recipient";
 
-                    // Use the new messageType field from backend: "provider_to_patient" or "patient_to_provider"
-                    // For UI purposes, we want "provider" or "patient" to indicate who sent the message
-                    const messageType = comm.messageType === 'provider_to_patient' ? 'provider' : 'patient';
+                    // FIXED: Use messageType to determine who sent the message
+                    // patient_to_provider = patient sent it = show as "patient" (Emma's message, right side)
+                    // provider_to_patient = provider sent it = show as "provider" (provider's message, left side)
+                    console.log('Backend message:', { id: comm.id, messageType: comm.messageType, fromType: comm.fromType, fromName: comm.fromName });
+                    const messageType = comm.messageType === 'patient_to_provider' ? 'patient' : 'provider';
+                    console.log('UI messageType (FIXED):', messageType);
 
                     return {
                         id: comm.id,
@@ -951,20 +965,20 @@ export default function MessagingPage() {
             if (json.success && json.data) {
                 // Now upload attachments to the message
                 if (attachedFiles.length > 0) {
-                    for (const file of attachedFiles) {
-                        try {
-                            await uploadMessageAttachment(json.data.id, file);
-                        } catch (error) {
-                            console.error('Failed to upload attachment:', file.name, error);
-                            showNotification(`Failed to upload ${file.name}`, 'error');
-                        }
+                    try {
+                        await uploadMultipleAttachments(json.data.id, attachedFiles);
+                        showNotification(`Message sent with ${attachedFiles.length} attachment(s)! ✨`, 'success');
+                    } catch (error) {
+                        console.error('Failed to upload attachments:', error);
+                        showNotification(`Message sent but some attachments failed to upload`, 'error');
                     }
+                } else {
+                    showNotification('Reply sent successfully! ✨', 'success');
                 }
 
                 await loadCommunications();
                 setReplyBody("");
                 setAttachedFiles([]); // Clear attached files
-                showNotification('Reply sent successfully! ✨', 'success');
 
                 // Reset textarea height
                 if (replyInputRef.current) {
@@ -1015,14 +1029,15 @@ export default function MessagingPage() {
             if (json.success && json.data) {
                 // Now upload attachments to the message
                 if (newMessageFiles.length > 0) {
-                    for (const file of newMessageFiles) {
-                        try {
-                            await uploadMessageAttachment(json.data.id, file);
-                        } catch (error) {
-                            console.error('Failed to upload file:', file.name, error);
-                            showNotification(`Failed to upload ${file.name}`, 'error');
-                        }
+                    try {
+                        await uploadMultipleAttachments(json.data.id, newMessageFiles);
+                        showNotification(`Message sent with ${newMessageFiles.length} attachment(s)! ✨`, 'success');
+                    } catch (error) {
+                        console.error('Failed to upload attachments:', error);
+                        showNotification(`Message sent but some attachments failed to upload`, 'error');
                     }
+                } else {
+                    showNotification('Message sent successfully! ✨', 'success');
                 }
 
                 await loadCommunications();
@@ -1030,7 +1045,6 @@ export default function MessagingPage() {
                 setNewMessageFiles([]); // Clear attached files
                 setSelectedProvider(null);
                 setShowProviderSearch(false);
-                showNotification('Message sent successfully! ✨', 'success');
             } else {
                 throw new Error(json.message || 'Failed to send message');
             }
@@ -1089,17 +1103,20 @@ export default function MessagingPage() {
 
     // Load attachments for thread messages when conversation is selected
     useEffect(() => {
-        if (selectedConversation && getThreadMessages.length > 0) {
+        if (selectedConversation) {
             const loadThreadAttachments = async () => {
                 setLoadingAttachments(true);
                 try {
                     const attachmentsMap: Record<number, Attachment[]> = {};
 
-                    for (const threadMsg of getThreadMessages) {
+                    // Use getThreadMessages to get the actual message IDs
+                    const threadMessages = getThreadMessages;
+                    for (const threadMsg of threadMessages) {
                         const messageId = parseInt(threadMsg.id);
-                        if (!isNaN(messageId)) {
-                            const attachments = await loadMessageAttachments(messageId);
+                        const attachments = await loadMessageAttachments(messageId);
+                        if (attachments.length > 0) {
                             attachmentsMap[messageId] = attachments;
+                            console.log(`Portal: Loaded ${attachments.length} attachments for message ${messageId}:`, attachments);
                         }
                     }
 

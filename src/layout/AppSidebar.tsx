@@ -1,5 +1,5 @@
 "use client";
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
@@ -131,7 +131,22 @@ const navItems: NavItem[] = [
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const pathname = usePathname();
+  const [isHydrated, setIsHydrated] = useState(false);
   const isActive = useCallback((path: string) => path === pathname, [pathname]);
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  if (!isHydrated) {
+    return (
+      <aside className="fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 w-[90px] -translate-x-full lg:translate-x-0">
+        <div className="text-center">
+          <div className="animate-pulse bg-gray-300 h-8 w-8 rounded mx-auto mt-8"></div>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside

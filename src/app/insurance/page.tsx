@@ -1693,7 +1693,7 @@ export default function InsurancePage() {
   if (loading || !mounted) {
     return (
       <AdminLayout>
-        <div className="max-w-5xl mx-auto p-6">
+        <div className="p-6">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-6"></div>
             <div className="space-y-4">
@@ -1713,7 +1713,7 @@ export default function InsurancePage() {
   if (error) {
     return (
       <AdminLayout>
-        <div className="max-w-6xl mx-auto p-6">
+        <div className="p-6">
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
             <div className="flex items-start">
               <svg
@@ -1762,7 +1762,7 @@ export default function InsurancePage() {
   return (
     <AdminLayout>
       {/* Header Card: dynamic patient info */}
-      <div className="max-w-5xl mx-auto p-4">
+      <div className="px-4 sm:px-6 lg:px-8 py-4">
         <div className="bg-linear-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-xl p-6 mb-6 border border-blue-100 dark:border-gray-700 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex-1">
@@ -1849,7 +1849,7 @@ export default function InsurancePage() {
 
       {/* Alert Display */}
       {alert && (
-        <div className="max-w-5xl mx-auto px-6">
+        <div className="px-6">
           <Alert
             variant={alert.variant}
             title={alert.title}
@@ -1859,7 +1859,7 @@ export default function InsurancePage() {
       )}
 
       {/* Stacked rows: primary, secondary, tertiary */}
-      <div className="max-w-5xl mx-auto p-6 space-y-8">
+      <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-8">
         <div className="flex flex-col space-y-6">
           <div>{renderInsuranceSection("primary", "Primary")}</div>
           <div>{renderInsuranceSection("secondary", "Secondary")}</div>

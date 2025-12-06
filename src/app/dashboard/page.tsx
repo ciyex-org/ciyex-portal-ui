@@ -387,7 +387,7 @@ function PatientDashboard() {
                     }}></div>
                 </div>
 
-                <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="relative px-4 sm:px-6 lg:px-8 py-8">
                     <div className="text-center">
                         <div className="mb-6">
                             <h1 className="text-2xl md:text-3xl font-bold mb-2 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
@@ -441,7 +441,7 @@ function PatientDashboard() {
 
             {/* Enhanced Quick Actions - More Compact */}
             <div className="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-8">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-8">
                         <h2 className="text-2xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Quick Actions</h2>
                         <p className="text-gray-600 max-w-2xl mx-auto text-sm">Access your most frequently used features and manage your health information with ease.</p>
@@ -529,7 +529,7 @@ function PatientDashboard() {
             </div>
 
             {/* Health Metrics */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className="px-4 sm:px-6 lg:px-8 py-12">
                 <div className="text-center mb-10">
                     <h2 className="text-3xl font-bold text-gray-900 mb-4">Health Overview</h2>
                     <p className="text-gray-600 max-w-2xl mx-auto">Track your key health metrics and stay informed about your well-being.</p>
@@ -631,7 +631,7 @@ function PatientDashboard() {
             </div>
 
             {/* Main Content */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className="px-4 sm:px-6 lg:px-8 py-12">
                 {/* Main Content Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* Left Column - Patient Info, Appointments & Health Summary */}

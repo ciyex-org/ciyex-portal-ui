@@ -121,7 +121,7 @@ export default function PatientEducationPage() {
 
   return (
     <AdminLayout>
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
+      <div className="p-6 space-y-6">
         {/* Header with gradient */}
         <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-blue-700 dark:via-indigo-700 dark:to-purple-700 rounded-xl shadow-lg p-8 text-white">
           <div className="flex items-center justify-between">

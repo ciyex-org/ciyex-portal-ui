@@ -847,12 +847,8 @@ export default function MessagingPage() {
                     const senderName = comm.fromName || "Unknown User";
                     const recipientName = comm.toNames?.[0] || "Unknown Recipient";
 
-                    // FIXED: Use messageType to determine who sent the message
-                    // patient_to_provider = patient sent it = show as "patient" (Emma's message, right side)
-                    // provider_to_patient = provider sent it = show as "provider" (provider's message, left side)
-                    console.log('Backend message:', { id: comm.id, messageType: comm.messageType, fromType: comm.fromType, fromName: comm.fromName });
-                    const messageType = comm.messageType === 'patient_to_provider' ? 'patient' : 'provider';
-                    console.log('UI messageType (FIXED):', messageType);
+                    // Use fromType directly from backend (already correct)
+                    const messageType = comm.fromType || 'patient';
 
                     return {
                         id: comm.id,

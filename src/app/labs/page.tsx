@@ -76,21 +76,25 @@ export default function LabsPage() {
 
   return (
     <AdminLayout>
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
-        {/* header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <h1 className="text-xl font-bold text-gray-800 dark:text-white">
-            Labs & Orders
-          </h1>
-          <button
+      <>
+      <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200">
+        <div className="px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Labs & Orders</h1>
+              <p className="text-slate-600 mt-1">View and request laboratory tests</p>
+            </div>
+            <button
             onClick={() => setShowModal(true)}
             className="px-4 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
           >
             + Request Lab
-          </button>
+            </button>
+          </div>
         </div>
+      </div>
 
-        {/* alerts */}
+      <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {alert && (
           <Alert
             variant={alert.variant}
@@ -218,6 +222,7 @@ export default function LabsPage() {
           </div>
         )}
       </div>
+      </>
     </AdminLayout>
   );
 }

@@ -100,7 +100,7 @@ export default function AllergiesPage() {
     <AdminLayout>
       {/* Clinical Header */}
       <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-slate-900">Health Profile</h1>
@@ -145,7 +145,7 @@ export default function AllergiesPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="px-4 sm:px-6 lg:px-8 py-8">
         {/* Alerts */}
         {alert && (
           <div className="mb-6">

@@ -1132,7 +1132,7 @@ export default function MessagingPage() {
 
     /* ---- Fiverr-style Conversation View ---- */
     const ConversationView = () => (
-        <div className="h-[calc(100vh-140px)] bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl overflow-hidden border border-gray-200 shadow-xl">
+        <div className="h-full bg-gradient-to-br from-gray-50 to-blue-50 overflow-hidden">
             <div className="h-full overflow-y-auto hide-scrollbar">
                 <div className="flex min-h-full">
                 {/* Left Side - Conversations List */}
@@ -1425,7 +1425,7 @@ export default function MessagingPage() {
 
     return (
         <AdminLayout>
-            <div className="px-6 pt-6 pb-4 h-screen bg-white">
+            <div className="h-full bg-white">
                 {/* Notification */}
                 {notification && (
                     <div className={`fixed top-6 right-6 px-6 py-3 rounded-lg text-white font-semibold z-50 ${
@@ -1435,27 +1435,32 @@ export default function MessagingPage() {
                     </div>
                 )}
 
-                {/* Header */}
-                <div className="mb-6 flex justify-between items-center">
-                    <div>
-                        <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent mb-2">
-                            My Messages
-                        </h1>
-                        <p className="text-gray-600 dark:text-gray-300 mt-1">
-                            Communicate securely with your healthcare providers
-                        </p>
-                    </div>
-                    <button
-                        onClick={() => setShowProviderSearch(true)}
-                        className="px-6 py-3 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-lg font-semibold hover:from-green-600 hover:to-blue-600 transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                    >
-                        <span>+</span>
-                        New Message
-                    </button>
-                </div>
-
                 {/* Content Area */}
-                <ConversationView />
+                <div className="h-full flex flex-col">
+                    {/* Header */}
+                    <div className="px-6 py-4 flex justify-between items-center border-b bg-white flex-shrink-0">
+                        <div>
+                            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
+                                My Messages
+                            </h1>
+                            <p className="text-sm text-gray-600 dark:text-gray-300">
+                                Communicate securely with your healthcare providers
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setShowProviderSearch(true)}
+                            className="px-4 py-2 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-lg font-semibold hover:from-green-600 hover:to-blue-600 transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl"
+                        >
+                            <span>+</span>
+                            New Message
+                        </button>
+                    </div>
+                    
+                    {/* Conversation View */}
+                    <div className="flex-1 overflow-hidden">
+                        <ConversationView />
+                    </div>
+                </div>
             </div>
 
             {/* Enhanced New Message Modal - Compact & User-Friendly */}

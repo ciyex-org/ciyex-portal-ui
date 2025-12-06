@@ -373,17 +373,16 @@ export default function AppointmentsPage() {
 
   return (
     <AdminLayout>
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              My Appointments
-            </h1>
-            <p className="text-gray-600 dark:text-gray-300 mt-1">
-              View and manage your healthcare appointments
-            </p>
-          </div>
-          <button
+      <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200">
+        <div className="px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">My Appointments</h1>
+              <p className="text-slate-600 mt-1">
+                View and manage your healthcare appointments
+              </p>
+            </div>
+            <button
             onClick={() => setShowModal(true)}
             className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 dark:focus:ring-blue-800 shadow-lg transition-all duration-200 hover:shadow-xl"
           >
@@ -392,8 +391,11 @@ export default function AppointmentsPage() {
             </svg>
             Request Appointment
           </button>
+          </div>
         </div>
+      </div>
 
+      <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {alert && <Alert {...alert} />}
 
         {/* Table */}

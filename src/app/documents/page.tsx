@@ -14,7 +14,7 @@ export default function DocumentsPage() {
 
   if (error) return (
     <AdminLayout>
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="p-6">
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
           <div className="flex items-start">
             <svg className="h-6 w-6 text-yellow-600 mr-3 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -40,15 +40,18 @@ export default function DocumentsPage() {
 
   return (
     <AdminLayout>
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+      <div className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200">
+        <div className="px-4 sm:px-6 lg:px-8 py-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">My Medical Documents</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <h1 className="text-2xl font-bold text-slate-900">My Medical Documents</h1>
+            <p className="text-slate-600 mt-1">
               Access your medical records, test results, and documents
             </p>
           </div>
         </div>
+      </div>
+
+      <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
         {documents.length === 0 ? (
           <div className="text-center py-12">

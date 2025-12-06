@@ -217,7 +217,7 @@ export default function DemographicsPage() {
   --------------------------------------------- */
   return (
     <AdminLayout>
-      <div className="max-w-5xl mx-auto p-6 space-y-8">
+      <div className="space-y-8">
         {/* HEADER CARD */}
         <div className="bg-gradient-to-r from-purple-500 to-orange-500 text-white p-6 rounded-xl shadow">
           <div className="flex items-center justify-between">

@@ -69,12 +69,19 @@ export default function PatientTelehealthPage() {
         }
 
         const joinData = await joinResponse.json();
+        console.log('Join response:', joinData);
         
-        if (!joinData.meetingUrl) {
-          throw new Error("No meeting URL received from server");
+        // Handle different response formats from backend
+        let url = joinData.meetingUrl || joinData.url || joinData.data?.meetingUrl || joinData.data?.url;
+        
+        // Fallback: Generate Jitsi URL directly if backend doesn't provide one
+        if (!url) {
+          console.warn('No meeting URL in response, generating fallback URL');
+          const jitsiDomain = process.env.NEXT_PUBLIC_JITSI_DOMAIN || 'meet.jit.si';
+          url = `https://${jitsiDomain}/${roomName}?jwt=${joinData.token || ''}`;
         }
 
-        setMeetingUrl(joinData.meetingUrl);
+        setMeetingUrl(url);
         setAppointmentInfo({
           id: appointmentId,
           providerName: "Your Healthcare Provider",

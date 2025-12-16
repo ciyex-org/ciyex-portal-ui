@@ -307,14 +307,17 @@ export default function AppointmentsPage() {
     const formattedDate = `${month}/${day}/${year}`;
 
     const newAppt = {
-      visitType: form.visitType,
+      visitType: form.visitType || '',
       providerId: Number(form.providerId),
       locationId: Number(form.locationId),
-      date: formattedDate, // Send in MM/dd/yy format
-      time: form.time, // Send raw time string (HH:mm:ss format)
-      reason: form.reason,
-      priority: form.priority,
+      date: formattedDate,
+      time: form.time,
+      reason: form.reason || '',
+      priority: form.priority || '',
     };
+
+    console.log('🔍 Appointment request payload:', newAppt);
+    console.log('🔍 Start time:', form.time);
 
     setSubmitting(true);
     try {

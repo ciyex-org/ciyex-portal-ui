@@ -67,6 +67,7 @@ type Appointment = {
   providerName?: string;
   locationName?: string;
   patientName?: string;
+  meetingUrl?: string;
 };
 
 type Provider = {
@@ -454,7 +455,9 @@ export default function AppointmentsPage() {
 
                     const isVirtualAppointment = a.visitType?.toLowerCase().includes('virtual') || 
                                                  a.visitType?.toLowerCase().includes('telehealth') ||
-                                                 a.visitType?.toLowerCase().includes('video');
+                                                 a.visitType?.toLowerCase().includes('video') ||
+                                                 a.visitType?.toLowerCase().includes('online') ||
+                                                 a.visitType?.toLowerCase().includes('remote');
 
                     return (
                       <tr
@@ -532,20 +535,19 @@ export default function AppointmentsPage() {
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex items-center space-x-2">
-                            {isVirtualAppointment && a.status?.toLowerCase() === 'scheduled' && a.id && (
+                            {isVirtualAppointment && (a.status?.toLowerCase() === 'scheduled' || a.status?.toLowerCase() === 'pending') && a.id && (
                               <button
                                 onClick={() => {
-                                  setTelehealthModal({ open: true, url: `/telehealth/${a.id}` });
                                   window.open(`/telehealth/${a.id}`, '_blank', 'noopener,noreferrer');
                                 }}
-                                className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700 focus:ring-2 focus:ring-green-200"
+                                className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700 focus:ring-2 focus:ring-green-200 transition-colors"
                                 title="Join Video Call"
                                 aria-label={`Join video call for appointment ${a.id}`}
                               >
                                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                                 </svg>
-                                Join
+                                Join Video
                               </button>
                             )}
                             <button
@@ -835,7 +837,9 @@ export default function AppointmentsPage() {
                 {/* Virtual Visit Info */}
                 {(form.visitType.toLowerCase().includes('virtual') || 
                   form.visitType.toLowerCase().includes('telehealth') ||
-                  form.visitType.toLowerCase().includes('video')) && (
+                  form.visitType.toLowerCase().includes('video') ||
+                  form.visitType.toLowerCase().includes('online') ||
+                  form.visitType.toLowerCase().includes('remote')) && (
                   <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
                     <div className="flex items-start">
                       <svg className="w-4 h-4 text-green-500 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

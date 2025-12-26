@@ -3,10 +3,10 @@ name: Deploy Portal UI to Stage
 on:
   push:
     branches:
-      - main
+      - stage
   pull_request:
     branches:
-      - main
+      - stage
   workflow_dispatch:
 
 env:
@@ -60,7 +60,7 @@ jobs:
 
   deploy-stage:
     name: Deploy to Stage
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/stage' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: stage

@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ciyex-dev
+
+resources:
+  - ../../base
+
+namePrefix: dev-
+
+labels:
+  - pairs:
+      environment: dev
+    includeSelectors: false
+
+replicas:
+  - name: ciyex-portal-ui
+    count: 1
+
+patches:
+  - path: deployment-patch.yaml
+  - path: ingress-patch.yaml
+
+configMapGenerator:
+  - name: portal-ui-config
+    literals:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=https://ciyex-api.apps-dev.in.hinisoft.com

@@ -13,6 +13,11 @@ const outfit = Outfit({
 export const metadata: Metadata = {
     title: "Ciyex Connect",
     description: "Patient Portal",
+    icons: {
+        icon: ['/shield-favicon.ico'],
+        shortcut: '/shield-favicon.ico',
+        apple: '/shield-favicon.ico',
+    },
 };
 
 export default function RootLayout({
@@ -22,6 +27,10 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en">
+        <head>
+            <link rel="icon" href="/shield-favicon.ico" type="image/x-icon" />
+            <link rel="shortcut icon" href="/shield-favicon.ico" type="image/x-icon" />
+        </head>
         <body className={`${outfit.className} dark:bg-gray-900`}>
         <ThemeProvider>
             <SidebarProvider>

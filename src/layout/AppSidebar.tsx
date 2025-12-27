@@ -160,36 +160,17 @@ const AppSidebar: React.FC = () => {
       {/* Logo */}
       <div className="py-8 flex justify-center">
         {isExpanded || isHovered || isMobileOpen ? (
-          <svg xmlns="http://www.w3.org/2000/svg" width="200" height="80" viewBox="0 0 200 80">
-            <defs>
-              <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#2563eb" />
-                <stop offset="100%" stopColor="#3b82f6" />
-              </linearGradient>
-            </defs>
-            <text x="50%" y="40%" dominantBaseline="middle" textAnchor="middle"
-              fontFamily="Poppins, Arial, sans-serif" fontSize="34" fontWeight="800" fill="#1e3a8a">
-              Ciyex
-            </text>
-            <text x="50%" y="75%" dominantBaseline="middle" textAnchor="middle"
-              fontFamily="Poppins, Arial, sans-serif" fontSize="24" fontWeight="600" fill="url(#grad)">
-              Connect
-            </text>
-          </svg>
+          <img 
+            src="/images/ciyex-connect-logo.png" 
+            alt="Ciyex Connect" 
+            className="h-16 w-auto"
+          />
         ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
-            <defs>
-              <linearGradient id="gradSmall" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#2563eb" />
-                <stop offset="100%" stopColor="#3b82f6" />
-              </linearGradient>
-            </defs>
-            <rect width="40" height="40" rx="8" fill="url(#gradSmall)" />
-            <text x="50%" y="55%" dominantBaseline="middle" textAnchor="middle"
-              fontFamily="Poppins, Arial, sans-serif" fontSize="16" fontWeight="700" fill="white">
-              CC
-            </text>
-          </svg>
+          <img 
+            src="/images/ciyex-connect.png" 
+            alt="Ciyex Connect" 
+            className="h-12 w-12"
+          />
         )}
       </div>
 

@@ -9,7 +9,7 @@ spec:
         - name: regcred
       containers:
         - name: ciyex-portal-ui
-          image: registry.apps-prod.us-east.in.hinisoft.com/ciyex-portal-ui:alpha
+          image: registry.apps-prod.us-east.in.hinisoft.com/ciyex-portal-ui:2.0.2-alpha.2
           env:
             - name: NODE_ENV
               value: "development"

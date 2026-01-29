@@ -20,7 +20,7 @@ replicas:
 images:
   - name: ciyex-portal-ui
     newName: nginx
-    newTag: "latest"
+    newTag: "2.0.2-alpha.15"
 
 patches:
   - target:

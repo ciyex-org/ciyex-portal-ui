@@ -21,6 +21,10 @@ on:
           - 'Promote to GA'
           - 'Skip RC'
         default: 'Build'
+      runner:
+        description: 'Runner label to use for workflow_dispatch (e.g. self-hosted or ubuntu-latest)'
+        type: string
+        default: 'ubuntu-latest'
 
 concurrency:
   group: portal-ui-version-management
@@ -36,7 +40,7 @@ jobs:
   promote-rc:
     name: Promote to Release Candidate
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Promote to RC'
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'ubuntu-latest' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -99,7 +103,7 @@ jobs:
   promote-ga:
     name: Promote to General Availability
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Promote to GA'
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'ubuntu-latest' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -154,7 +158,7 @@ jobs:
   skip-rc:
     name: Skip Release Candidate
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Skip RC'
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'ubuntu-latest' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -207,7 +211,7 @@ jobs:
   version:
     name: Determine Version
     if: github.event_name != 'workflow_dispatch' || github.event.inputs.action == 'Build'
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'ubuntu-latest' }}
     outputs:
       version: ${{ steps.version.outputs.version }}
       environment: ${{ steps.version.outputs.environment }}
@@ -273,7 +277,7 @@ jobs:
   pr-build:
     name: PR Build
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'ubuntu-latest' }}
     needs: [version]
     steps:
       - name: Checkout
@@ -307,7 +311,7 @@ jobs:
   build-deploy:
     name: Build & Deploy (${{ needs.version.outputs.environment }})
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Build')
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'ubuntu-latest' }}
     needs: [version]
     environment:
       name: ${{ needs.version.outputs.environment }}
@@ -398,7 +402,7 @@ jobs:
   notify:
     name: Notify
     if: always() && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Build'))
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'ubuntu-latest' }}
     needs: [version, build-deploy]
     steps:
       - name: Send Teams notification

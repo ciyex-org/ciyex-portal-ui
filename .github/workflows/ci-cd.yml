@@ -434,26 +434,58 @@ jobs:
 
   notify:
     name: Notify
-    if: always() && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Build'))
+    if: always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'ubuntu-latest' }}
-    needs: [version, build-deploy]
+    needs: [version, build-deploy, promote-rc, promote-ga]
     steps:
       - name: Send Teams notification
         run: |
           WEBHOOK="${{ secrets.TEAMS_WEBHOOK_URL }}"
           [ -z "$WEBHOOK" ] && exit 0
 
-          # Determine status with fallback when build-deploy was skipped
-          STATUS="${{ needs.build-deploy.result }}"
-          if [ -z "$STATUS" ]; then
+          # Determine action type and status
+          ACTION="${{ github.event.inputs.action }}"
+          if [ -z "$ACTION" ]; then
+            ACTION="Build"
+          fi
+
+          # Determine overall status from all jobs
+          BUILD_STATUS="${{ needs.build-deploy.result }}"
+          RC_STATUS="${{ needs.promote-rc.result }}"
+          GA_STATUS="${{ needs.promote-ga.result }}"
+          
+          STATUS="success"
+          if [ "$BUILD_STATUS" = "failure" ] || [ "$RC_STATUS" = "failure" ] || [ "$GA_STATUS" = "failure" ]; then
+            STATUS="failure"
+          elif [ "$BUILD_STATUS" = "skipped" ] && [ "$RC_STATUS" = "skipped" ] && [ "$GA_STATUS" = "skipped" ]; then
             STATUS="skipped"
           fi
+          
           EMOJI="✅"; [ "$STATUS" != "success" ] && EMOJI="❌"
 
-          # Determine version, fallback to the ref name if version output is empty
+          # Determine version and environment
           VERSION="${{ needs.version.outputs.version }}"
+          ENV="${{ needs.version.outputs.environment }}"
+          
+          # For promotions, extract version from tag/ref if available
+          if [ "$ACTION" = "Promote to RC" ] || [ "$ACTION" = "Promote to GA" ]; then
+            if [ -z "$VERSION" ]; then
+              VERSION="${GITHUB_REF##*/}"
+            fi
+            # Determine environment based on action
+            if [ "$ACTION" = "Promote to RC" ]; then
+              ENV="stage"
+            elif [ "$ACTION" = "Promote to GA" ]; then
+              ENV="prod"
+            fi
+          fi
+          
+          # Fallback if still empty
           if [ -z "$VERSION" ]; then
             VERSION="${GITHUB_REF##*/}"
+          fi
+          if [ -z "$ENV" ]; then
+            ENV="unknown"
           fi
 
           curl -H "Content-Type: application/json" -d '{
@@ -464,8 +496,9 @@ jobs:
                 "type": "AdaptiveCard",
                 "version": "1.4",
                 "body": [
-                  {"type": "TextBlock", "size": "Large", "weight": "Bolder", "text": "'"$EMOJI"' Ciyex Portal UI - '${{ needs.version.outputs.environment }}'"},
+                  {"type": "TextBlock", "size": "Large", "weight": "Bolder", "text": "'"$EMOJI"' Ciyex Portal UI - '"$ENV"'"},
                   {"type": "FactSet", "facts": [
+                    {"title": "Action", "value": "'"$ACTION"'"},
                     {"title": "Version", "value": "'"$VERSION"'"},
                     {"title": "Status", "value": "'"$STATUS"'"},
                     {"title": "Actor", "value": "${{ github.actor }}"}

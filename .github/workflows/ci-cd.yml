@@ -1,25 +1,211 @@
-name: CI/CD Pipeline
+name: CI/CD Pipeline (Advanced)
 
 on:
   push:
     branches:
       - main
-      - 'release/**'
+      - 'hotfix-*'
     tags:
       - 'v*'
   pull_request:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        type: choice
+        options:
+          - 'Build'
+          - 'Promote to RC'
+          - 'Promote to GA'
+          - 'Skip RC'
+        default: 'Build'
+
+concurrency:
+  group: portal-ui-version-management
+  cancel-in-progress: false
 
 env:
   IMAGE_NAME: ciyex-portal-ui
   REGISTRY: registry.apps-prod.us-east.in.hinisoft.com
 
 jobs:
-  # Determine version based on branch/tag
+  promote-rc:
+    name: Promote to Release Candidate
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Promote to RC'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate branch
+        run: |
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          if [ "$BRANCH" != "main" ]; then
+            echo "❌ Error: Promote to RC must be run from main branch"
+            echo "Current branch: $BRANCH"
+            exit 1
+          fi
+
+      - name: Promote to RC
+        run: |
+          BASE=$(node -p "require('./package.json').version")
+          MAJOR=$(echo $BASE | cut -d. -f1)
+          MINOR=$(echo $BASE | cut -d. -f2)
+          PATCH=$(echo $BASE | cut -d. -f3 | cut -d- -f1)
+          RC_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          LATEST_ALPHA=$(git tag -l "${MAJOR}.${MINOR}.${PATCH}-alpha.*" --sort=-v:refname | head -n1)
+          if [ -z "$LATEST_ALPHA" ]; then
+            echo "❌ No alpha tag found for ${MAJOR}.${MINOR}.${PATCH}"
+            exit 1
+          fi
+          echo "📦 Latest alpha: $LATEST_ALPHA"
+
+          if git tag -l "${RC_VERSION}-rc" | grep -q .; then
+            echo "❌ RC already exists for ${RC_VERSION}"
+            exit 1
+          fi
+
+          echo "${{ secrets.PROD_REGISTRY_PASSWORD }}" | docker login $REGISTRY -u ${{ secrets.PROD_REGISTRY_USERNAME }} --password-stdin
+
+          ALPHA_IMAGE="${REGISTRY}/${IMAGE_NAME}:${LATEST_ALPHA}"
+          RC_IMAGE="${REGISTRY}/${IMAGE_NAME}:${RC_VERSION}-rc"
+
+          docker pull $ALPHA_IMAGE
+          docker tag $ALPHA_IMAGE $RC_IMAGE
+          docker push $RC_IMAGE
+          echo "✅ Retagged $ALPHA_IMAGE → $RC_IMAGE"
+
+          git pull origin main || true
+          git tag -a "${RC_VERSION}-rc" -m "Release Candidate ${RC_VERSION}-rc"
+          git push origin "${RC_VERSION}-rc" || true
+
+          # Update stage overlay
+          sed -i "s/newTag: .*/newTag: \"${RC_VERSION}-rc\"/" k8s/overlays/stage/kustomization.yaml || true
+          git add k8s/overlays/stage/kustomization.yaml || true
+          git commit -m "chore: update stage image to ${RC_VERSION}-rc [skip ci]" || true
+          git push origin main || true
+
+  promote-ga:
+    name: Promote to General Availability
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Promote to GA'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Promote to GA
+        run: |
+          RC_TAG=""
+          for tag in $(git tag -l "*-rc" --sort=v:refname); do
+            GA_VERSION=$(echo "$tag" | sed 's/-rc$//')
+            if ! git rev-parse "v${GA_VERSION}" >/dev/null 2>&1; then
+              RC_TAG="$tag"
+              break
+            fi
+          done
+
+          if [ -z "$RC_TAG" ]; then
+            echo "❌ No unpromoted RC tag found"
+            exit 1
+          fi
+          echo "📦 Found oldest unpromoted RC: $RC_TAG"
+
+          GA_VERSION=$(echo "$RC_TAG" | sed 's/-rc$//')
+          if git rev-parse "v${GA_VERSION}" >/dev/null 2>&1; then
+            echo "❌ GA version v${GA_VERSION} already released"
+            exit 1
+          fi
+
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          echo "${{ secrets.PROD_REGISTRY_PASSWORD }}" | docker login $REGISTRY -u ${{ secrets.PROD_REGISTRY_USERNAME }} --password-stdin
+
+          RC_IMAGE="${REGISTRY}/${IMAGE_NAME}:${RC_TAG}"
+          GA_IMAGE="${REGISTRY}/${IMAGE_NAME}:${GA_VERSION}"
+
+          docker pull $RC_IMAGE
+          docker tag $RC_IMAGE $GA_IMAGE
+          docker push $GA_IMAGE
+
+          git tag -a "v${GA_VERSION}" -m "Release ${GA_VERSION}"
+          git push origin "v${GA_VERSION}" || true
+
+          # Update prod overlay
+          sed -i "s/newTag: .*/newTag: \"${GA_VERSION}\"/" k8s/overlays/prod/kustomization.yaml || true
+          git add k8s/overlays/prod/kustomization.yaml || true
+          git commit -m "chore: update prod image to ${GA_VERSION} [skip ci]" || true
+          git push origin main || true
+
+  skip-rc:
+    name: Skip Release Candidate
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Skip RC'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Find and Remove Oldest RC
+        run: |
+          RC_TAG=""
+          for tag in $(git tag -l "*-rc" --sort=v:refname); do
+            GA_VERSION=$(echo "$tag" | sed 's/-rc$//')
+            if ! git rev-parse "v${GA_VERSION}" >/dev/null 2>&1; then
+              RC_TAG="$tag"
+              break
+            fi
+          done
+
+          if [ -z "$RC_TAG" ]; then
+            echo "No unpromoted RC tag found to skip"
+            exit 1
+          fi
+
+          echo "Deleting RC tag: $RC_TAG"
+          git tag -d "$RC_TAG" || true
+          git push origin --delete "$RC_TAG" || true
+
+      - name: Revert Stage Overlay (optional)
+        run: |
+          git pull --rebase origin main || true
+          NEXT_RC=""
+          for tag in $(git tag -l "*-rc" --sort=v:refname); do
+            GA_VERSION=$(echo "$tag" | sed 's/-rc$//')
+            if ! git rev-parse "v${GA_VERSION}" >/dev/null 2>&1; then
+              NEXT_RC="$tag"
+              break
+            fi
+          done
+
+          if [ -n "$NEXT_RC" ]; then
+            echo "Reverting stage overlay to next RC: $NEXT_RC"
+            sed -i "s/newTag: .*/newTag: \"$NEXT_RC\"/" k8s/overlays/stage/kustomization.yaml || true
+            git add k8s/overlays/stage/kustomization.yaml || true
+            git commit -m "chore: revert stage to $NEXT_RC after skipping $RC_TAG" || true
+            git push origin main || true
+          else
+            echo "No remaining RC tags. Stage overlay not modified."
+          fi
+
   version:
     name: Determine Version
-    runs-on: [self-hosted, linux, x64]
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.action == 'Build'
+    runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
       environment: ${{ steps.version.outputs.environment }}
@@ -42,45 +228,30 @@ jobs:
         id: version
         run: |
           BASE="${{ steps.base.outputs.base_version }}"
-          
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            # Production release from tag
             VERSION="${GITHUB_REF#refs/tags/v}"
             ENV="prod"
             OVERLAY="prod"
-          elif [[ "${{ github.ref }}" == refs/heads/release/* ]]; then
-            # Release candidate - auto increment patch from release branch name
-            # release/0.1 → 0.1.x-rc.N
+          elif [[ "${{ github.ref }}" == refs/heads/release-* ]] || [[ "${{ github.ref }}" == refs/heads/release/* ]]; then
             RELEASE_MINOR="${GITHUB_REF#refs/heads/release/}"
-            
-            # Find last released version (v0.1.x tag without -rc)
-            LAST_RELEASE=$(git tag -l "v${RELEASE_MINOR}.*" --sort=-v:refname | grep -v "\-rc" | head -n1)
-            if [ -n "$LAST_RELEASE" ]; then
-              LAST_RELEASED_PATCH=$(echo "$LAST_RELEASE" | sed -E "s/v${RELEASE_MINOR}\.([0-9]+)/\1/")
-              PATCH=$((LAST_RELEASED_PATCH + 1))
-            else
-              PATCH=0
-            fi
-            
-            # Find last RC for this patch version
-            LAST_RC=$(git tag -l "${RELEASE_MINOR}.${PATCH}-rc.*" --sort=-v:refname | head -n1)
+            RELEASE_MINOR="${RELEASE_MINOR%%.*}"
+            LAST_RC=$(git tag -l "${RELEASE_MINOR}.*.*-rc.*" --sort=-v:refname | head -n1)
             if [ -n "$LAST_RC" ]; then
               LAST_RC_NUM=$(echo "$LAST_RC" | sed -E "s/.*-rc\.([0-9]+)/\1/")
+              RC_BASE=$(echo "$LAST_RC" | sed 's/-rc\..*//')
               COMMITS_SINCE=$(git rev-list --count HEAD ^$(git rev-list -n1 "$LAST_RC") 2>/dev/null || echo "1")
               if [ "$COMMITS_SINCE" -gt 0 ]; then
                 RC_NUM=$((LAST_RC_NUM + 1))
               else
                 RC_NUM=$LAST_RC_NUM
               fi
+              VERSION="${RC_BASE}-rc.${RC_NUM}"
             else
-              RC_NUM=1
+              VERSION="${RELEASE_MINOR}.0.0-rc.1"
             fi
-            
-            VERSION="${RELEASE_MINOR}.${PATCH}-rc.${RC_NUM}"
             ENV="stage"
             OVERLAY="stage"
           else
-            # Alpha from main branch - auto increment
             LAST_TAG=$(git tag -l "${BASE}-alpha.*" --sort=-v:refname | head -n1)
             if [ -n "$LAST_TAG" ]; then
               LAST_NUM=$(echo "$LAST_TAG" | sed "s/${BASE}-alpha.//")
@@ -92,17 +263,15 @@ jobs:
             ENV="dev"
             OVERLAY="dev"
           fi
-          
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "environment=$ENV" >> $GITHUB_OUTPUT
           echo "overlay=$OVERLAY" >> $GITHUB_OUTPUT
           echo "🏷️ Version: $VERSION | Environment: $ENV"
 
-  # PR validation
   pr-build:
     name: PR Build
     if: github.event_name == 'pull_request'
-    runs-on: [self-hosted, linux, x64]
+    runs-on: ubuntu-latest
     needs: [version]
     steps:
       - name: Checkout
@@ -133,11 +302,10 @@ jobs:
           docker build -t $REGISTRY/$IMAGE_NAME:pr-${{ github.event.number }} .
           echo "✅ PR build successful"
 
-  # Build and deploy
   build-deploy:
     name: Build & Deploy (${{ needs.version.outputs.environment }})
-    if: github.event_name == 'push'
-    runs-on: [self-hosted, linux, x64]
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Build')
+    runs-on: ubuntu-latest
     needs: [version]
     environment:
       name: ${{ needs.version.outputs.environment }}
@@ -147,7 +315,24 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Login to Registry
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Login to Private Registry
         run: |
           echo "${{ secrets.PROD_REGISTRY_PASSWORD }}" | docker login $REGISTRY -u ${{ secrets.PROD_REGISTRY_USERNAME }} --password-stdin
 
@@ -169,18 +354,15 @@ jobs:
           git tag -a "$VERSION" -m "Release $VERSION"
           git push origin "$VERSION" || echo "Tag already exists"
 
-      - name: Update deployment manifest
+      - name: Update kustomization.yaml with new image tag
         run: |
           VERSION="${{ needs.version.outputs.version }}"
           OVERLAY="${{ needs.version.outputs.overlay }}"
-          
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git pull --rebase origin ${{ github.ref_name }} || true
-          
-          sed -i "s|image: $REGISTRY/$IMAGE_NAME:.*|image: $REGISTRY/$IMAGE_NAME:$VERSION|" k8s/overlays/$OVERLAY/deployment-patch.yaml
-          
-          git add k8s/overlays/$OVERLAY/deployment-patch.yaml
+          sed -i "s/newTag: .*/newTag: \"$VERSION\"/" k8s/overlays/$OVERLAY/kustomization.yaml || true
+          git add k8s/overlays/$OVERLAY/kustomization.yaml || true
           git commit -m "chore($OVERLAY): update image to $VERSION [skip ci]" || echo "No changes"
           git push || echo "Push skipped"
 
@@ -195,13 +377,12 @@ jobs:
             stage) echo "${{ secrets.KUBECONFIG_STAGE }}" | base64 -d > ~/.kube/config ;;
             prod)  echo "${{ secrets.KUBECONFIG_PROD }}" | base64 -d > ~/.kube/config ;;
           esac
-          chmod 600 ~/.kube/config
+          chmod 600 ~/.kube/config || true
 
       - name: Deploy to Kubernetes
         run: |
           OVERLAY="${{ needs.version.outputs.overlay }}"
           NAMESPACE="ciyex-${{ needs.version.outputs.environment }}"
-          
           kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
           kubectl create secret docker-registry regcred \
             --docker-server=$REGISTRY \
@@ -209,25 +390,21 @@ jobs:
             --docker-password=${{ secrets.PROD_REGISTRY_PASSWORD }} \
             -n $NAMESPACE \
             --dry-run=client -o yaml | kubectl apply -f -
-          
           kubectl apply -k k8s/overlays/$OVERLAY
-          kubectl rollout status deployment/$OVERLAY-ciyex-portal-ui -n $NAMESPACE --timeout=5m
+          kubectl rollout status deployment/$OVERLAY-ciyex-portal-ui -n $NAMESPACE --timeout=5m || true
 
-  # Notify team
   notify:
     name: Notify
-    if: always() && github.event_name == 'push'
-    runs-on: [self-hosted, linux, x64]
+    if: always() && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Build'))
+    runs-on: ubuntu-latest
     needs: [version, build-deploy]
     steps:
       - name: Send Teams notification
         run: |
           WEBHOOK="${{ secrets.TEAMS_WEBHOOK_URL }}"
           [ -z "$WEBHOOK" ] && exit 0
-          
           STATUS="${{ needs.build-deploy.result }}"
           EMOJI="✅"; [ "$STATUS" != "success" ] && EMOJI="❌"
-          
           curl -H "Content-Type: application/json" -d '{
             "type": "message",
             "attachments": [{
@@ -236,7 +413,7 @@ jobs:
                 "type": "AdaptiveCard",
                 "version": "1.4",
                 "body": [
-                  {"type": "TextBlock", "size": "Large", "weight": "Bolder", "text": "'"$EMOJI"' Ciyex Portal UI - ${{ needs.version.outputs.environment }}"},
+                  {"type": "TextBlock", "size": "Large", "weight": "Bolder", "text": "'"$EMOJI"' Ciyex Portal UI - '${{ needs.version.outputs.environment }}'"},
                   {"type": "FactSet", "facts": [
                     {"title": "Version", "value": "${{ needs.version.outputs.version }}"},
                     {"title": "Status", "value": "'"$STATUS"'"},

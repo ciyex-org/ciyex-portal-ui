@@ -468,12 +468,9 @@ jobs:
           
           EMOJI="✅"; [ "$STATUS" != "success" ] && EMOJI="❌"
 
-          # Determine version and environment
-          VERSION="${{ needs.version.outputs.version }}"
-          ENV="${{ needs.version.outputs.environment }}"
-          
-          # For promotions, extract version from package.json and latest tags
+          # Determine version and environment based on action type
           if [ "$ACTION" = "Promote to RC" ]; then
+            # Extract base version from package.json for RC promotion
             BASE=$(grep -m1 '"version"' package.json | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^\"]+)".*/\1/')
             MAJOR=$(echo $BASE | cut -d. -f1)
             MINOR=$(echo $BASE | cut -d. -f2)
@@ -481,20 +478,24 @@ jobs:
             VERSION="${MAJOR}.${MINOR}.${PATCH}-rc"
             ENV="stage"
           elif [ "$ACTION" = "Promote to GA" ]; then
+            # Extract base version from package.json for GA promotion
             BASE=$(grep -m1 '"version"' package.json | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^\"]+)".*/\1/')
             MAJOR=$(echo $BASE | cut -d. -f1)
             MINOR=$(echo $BASE | cut -d. -f2)
             PATCH=$(echo $BASE | cut -d. -f3 | cut -d- -f1)
             VERSION="${MAJOR}.${MINOR}.${PATCH}"
             ENV="prod"
-          fi
-          
-          # Fallback if still empty
-          if [ -z "$VERSION" ]; then
-            VERSION="${GITHUB_REF##*/}"
-          fi
-          if [ -z "$ENV" ]; then
-            ENV="unknown"
+          else
+            # For Build action, use version from version job
+            VERSION="${{ needs.version.outputs.version }}"
+            ENV="${{ needs.version.outputs.environment }}"
+            # Fallback if version job was skipped
+            if [ -z "$VERSION" ]; then
+              VERSION="${GITHUB_REF##*/}"
+            fi
+            if [ -z "$ENV" ]; then
+              ENV="dev"
+            fi
           fi
 
           curl -H "Content-Type: application/json" -d '{

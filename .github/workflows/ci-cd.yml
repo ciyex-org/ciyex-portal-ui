@@ -28,6 +28,8 @@ concurrency:
 
 env:
   IMAGE_NAME: ciyex-portal-ui
+  # Records which ref supplied the workflow file at runtime (branch/tag/ref)
+  WORKFLOW_SOURCE: ${{ github.ref }}
   REGISTRY: registry.apps-prod.us-east.in.hinisoft.com
 
 jobs:

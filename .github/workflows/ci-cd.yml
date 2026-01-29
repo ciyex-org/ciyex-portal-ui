@@ -401,11 +401,19 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p ~/.kube
+          KUBECONFIG_CONTENT=""
           case "${{ needs.version.outputs.environment }}" in
-            dev)   echo "${{ secrets.KUBECONFIG_DEV }}" | base64 -d > ~/.kube/config ;;
-            stage) echo "${{ secrets.KUBECONFIG_STAGE }}" | base64 -d > ~/.kube/config ;;
-            prod)  echo "${{ secrets.KUBECONFIG_PROD }}" | base64 -d > ~/.kube/config ;;
+            dev)   KUBECONFIG_CONTENT="${{ secrets.KUBECONFIG_DEV }}" ;;
+            stage) KUBECONFIG_CONTENT="${{ secrets.KUBECONFIG_STAGE }}" ;;
+            prod)  KUBECONFIG_CONTENT="${{ secrets.KUBECONFIG_PROD }}" ;;
           esac
+
+          if [ -z "$KUBECONFIG_CONTENT" ]; then
+            echo "No KUBECONFIG secret available for environment '${{ needs.version.outputs.environment }}' - skipping kubectl configuration and deploy steps."
+            exit 0
+          fi
+
+          echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
           chmod 600 ~/.kube/config || true
 
       - name: Deploy to Kubernetes

@@ -393,9 +393,12 @@ jobs:
           git push || echo "Push skipped"
 
       - name: Setup kubectl
+        if: secrets.KUBECONFIG_DEV != '' || secrets.KUBECONFIG_STAGE != '' || secrets.KUBECONFIG_PROD != ''
         uses: azure/setup-kubectl@v3
 
       - name: Configure kubectl
+        if: secrets.KUBECONFIG_DEV != '' || secrets.KUBECONFIG_STAGE != '' || secrets.KUBECONFIG_PROD != ''
+        continue-on-error: true
         run: |
           mkdir -p ~/.kube
           case "${{ needs.version.outputs.environment }}" in
@@ -406,6 +409,8 @@ jobs:
           chmod 600 ~/.kube/config || true
 
       - name: Deploy to Kubernetes
+        if: secrets.KUBECONFIG_DEV != '' || secrets.KUBECONFIG_STAGE != '' || secrets.KUBECONFIG_PROD != ''
+        continue-on-error: true
         run: |
           OVERLAY="${{ needs.version.outputs.overlay }}"
           NAMESPACE="ciyex-${{ needs.version.outputs.environment }}"

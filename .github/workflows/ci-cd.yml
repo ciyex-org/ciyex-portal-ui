@@ -20,6 +20,7 @@ on:
           - 'Promote to RC'
           - 'Promote to GA'
           - 'Skip RC'
+          - 'Deploy ArgoCD Apps'
         default: 'Build'
       runner:
         description: 'Runner label to use for workflow_dispatch (e.g. self-hosted or ubuntu-latest)'
@@ -221,6 +222,47 @@ jobs:
           else
             echo "No remaining RC tags. Stage overlay not modified."
           fi
+
+  deploy-argocd:
+    name: Deploy ArgoCD Applications
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Deploy ArgoCD Apps'
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'ubuntu-latest' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure kubectl for ArgoCD namespace
+        run: |
+          mkdir -p ~/.kube
+          # Use dev kubeconfig to access the cluster (ArgoCD is typically in the same cluster)
+          echo "${{ secrets.KUBECONFIG_DEV }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Verify ArgoCD namespace
+        run: |
+          if ! kubectl get namespace argocd 2>/dev/null; then
+            echo "❌ ArgoCD namespace not found. Please install ArgoCD first:"
+            echo "kubectl create namespace argocd"
+            echo "kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml"
+            exit 1
+          fi
+          echo "✅ ArgoCD namespace exists"
+
+      - name: Deploy ArgoCD Applications
+        run: |
+          echo "📦 Deploying ArgoCD applications..."
+          kubectl apply -f argocd/dev.yaml
+          kubectl apply -f argocd/stage.yaml
+          kubectl apply -f argocd/prod.yaml
+          
+          echo ""
+          echo "✅ ArgoCD applications deployed successfully!"
+          echo ""
+          echo "📊 Application Status:"
+          kubectl get applications -n argocd | grep ciyex-portal-ui || true
+          
+          echo ""
+          echo "🔄 ArgoCD will now automatically sync deployments when kustomization.yaml files are updated"
 
   version:
     name: Determine Version

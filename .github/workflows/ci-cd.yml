@@ -83,14 +83,14 @@ jobs:
 
           LATEST_ALPHA=$(git tag -l "${MAJOR}.${MINOR}.${PATCH}-alpha.*" --sort=-v:refname | head -n1)
           if [ -z "$LATEST_ALPHA" ]; then
-            echo "❌ No alpha tag found for ${MAJOR}.${MINOR}.${PATCH}"
-            exit 1
+            echo "ℹ️ No alpha tag found for ${MAJOR}.${MINOR}.${PATCH} - skipping RC promotion"
+            exit 0
           fi
           echo "📦 Latest alpha: $LATEST_ALPHA"
 
           if git tag -l "${RC_VERSION}-rc" | grep -q .; then
-            echo "❌ RC already exists for ${RC_VERSION}"
-            exit 1
+            echo "ℹ️ RC already exists for ${RC_VERSION} - skipping RC promotion"
+            exit 0
           fi
 
           echo "${{ secrets.PROD_REGISTRY_PASSWORD }}" | docker login $REGISTRY -u ${{ secrets.PROD_REGISTRY_USERNAME }} --password-stdin
@@ -124,21 +124,21 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Promote to GA
-        run: |
-          RC_TAG=""
-          for tag in $(git tag -l "*-rc" --sort=v:refname); do
-            GA_VERSION=$(echo "$tag" | sed 's/-rc$//')
-            if ! git rev-parse "v${GA_VERSION}" >/dev/null 2>&1; then
-              RC_TAG="$tag"
-              break
-            fi
-          done
+          - name: Promote to GA
+            run: |
+              RC_TAG=""
+              for tag in $(git tag -l "*-rc" --sort=v:refname); do
+                GA_VERSION=$(echo "$tag" | sed 's/-rc$//')
+                if ! git rev-parse "v${GA_VERSION}" >/dev/null 2>&1; then
+                  RC_TAG="$tag"
+                  break
+                fi
+              done
 
-          if [ -z "$RC_TAG" ]; then
-            echo "❌ No unpromoted RC tag found"
-            exit 1
-          fi
+              if [ -z "$RC_TAG" ]; then
+                echo "ℹ️ No unpromoted RC tag found - skipping GA promotion"
+                exit 0
+              fi
           echo "📦 Found oldest unpromoted RC: $RC_TAG"
 
           GA_VERSION=$(echo "$RC_TAG" | sed 's/-rc$//')

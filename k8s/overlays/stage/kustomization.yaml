@@ -19,7 +19,7 @@ replicas:
 
 images:
   - name: registry.apps-prod.us-east.in.hinisoft.com/ciyex-portal-ui
-    newTag: "latest"
+    newTag: "2.0.2-rc"
 
 patches:
   - target:

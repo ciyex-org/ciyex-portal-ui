@@ -17,9 +17,18 @@ replicas:
   - name: ciyex-portal-ui
     count: 1
 
+images:
+  - name: registry.apps-prod.us-east.in.hinisoft.com/ciyex-portal-ui
+    newTag: "latest"
+
 patches:
-  - path: deployment-patch.yaml
-  - path: ingress-patch.yaml
+  - target:
+      kind: Ingress
+      name: ciyex-portal-ui-ingress
+    patch: |
+      - op: replace
+        path: /spec/rules/0/host
+        value: ciyex-portal.apps-dev.in.hinisoft.com
 
 configMapGenerator:
   - name: portal-ui-config

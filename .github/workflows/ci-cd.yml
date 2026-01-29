@@ -35,11 +35,14 @@ env:
   # Records which ref supplied the workflow file at runtime (branch/tag/ref)
   WORKFLOW_SOURCE: ${{ github.ref }}
   REGISTRY: registry.apps-prod.us-east.in.hinisoft.com
+  # When set to 'true' the workflow will attempt login/push to the internal registry.
+  # Set this secret to 'true' for runs on self-hosted runners inside your network.
+  USE_INTERNAL_REGISTRY: ${{ secrets.USE_INTERNAL_REGISTRY }}
 
 jobs:
   promote-rc:
     name: Promote to Release Candidate
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Promote to RC'
+    if: (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Promote to RC') || (github.event_name == 'push' && contains(github.ref, '-rc'))
     runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'ubuntu-latest' }}
     steps:
       - name: Checkout
@@ -48,18 +51,28 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
       - name: Validate branch
         run: |
-          BRANCH="${GITHUB_REF#refs/heads/}"
-          if [ "$BRANCH" != "main" ]; then
-            echo "❌ Error: Promote to RC must be run from main branch"
-            echo "Current branch: $BRANCH"
-            exit 1
+          # Only validate branch when this was invoked manually from workflow_dispatch.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            BRANCH="${GITHUB_REF#refs/heads/}"
+            if [ "$BRANCH" != "main" ]; then
+              echo "❌ Error: Promote to RC must be run from main branch"
+              echo "Current branch: $BRANCH"
+              exit 1
+            fi
+          else
+            echo "Skipping branch validation for non-dispatch event: ${GITHUB_REF}"
           fi
 
       - name: Promote to RC
         run: |
-          BASE=$(node -p "require('./package.json').version")
+          BASE=$(grep -m1 '"version"' package.json | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^\"]+)".*/\1/')
           MAJOR=$(echo $BASE | cut -d. -f1)
           MINOR=$(echo $BASE | cut -d. -f2)
           PATCH=$(echo $BASE | cut -d. -f3 | cut -d- -f1)
@@ -102,7 +115,7 @@ jobs:
 
   promote-ga:
     name: Promote to General Availability
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Promote to GA'
+    if: (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Promote to GA') || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
     runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'ubuntu-latest' }}
     steps:
       - name: Checkout
@@ -223,10 +236,15 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
       - name: Get base version from package.json
         id: base
         run: |
-          BASE_VERSION=$(node -p "require('./package.json').version")
+          BASE_VERSION=$(grep -m1 '"version"' package.json | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
           echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
           echo "📦 Base version: $BASE_VERSION"
 
@@ -339,10 +357,12 @@ jobs:
         run: pnpm run build
 
       - name: Login to Private Registry
+        if: env.USE_INTERNAL_REGISTRY == 'true' || (github.event_name == 'workflow_dispatch' && github.event.inputs.runner == 'self-hosted')
         run: |
           echo "${{ secrets.PROD_REGISTRY_PASSWORD }}" | docker login $REGISTRY -u ${{ secrets.PROD_REGISTRY_USERNAME }} --password-stdin
 
       - name: Build and Push Docker Image
+        if: env.USE_INTERNAL_REGISTRY == 'true' || (github.event_name == 'workflow_dispatch' && github.event.inputs.runner == 'self-hosted')
         run: |
           VERSION="${{ needs.version.outputs.version }}"
           ENV="${{ needs.version.outputs.environment }}"
@@ -409,8 +429,20 @@ jobs:
         run: |
           WEBHOOK="${{ secrets.TEAMS_WEBHOOK_URL }}"
           [ -z "$WEBHOOK" ] && exit 0
+
+          # Determine status with fallback when build-deploy was skipped
           STATUS="${{ needs.build-deploy.result }}"
+          if [ -z "$STATUS" ]; then
+            STATUS="skipped"
+          fi
           EMOJI="✅"; [ "$STATUS" != "success" ] && EMOJI="❌"
+
+          # Determine version, fallback to the ref name if version output is empty
+          VERSION="${{ needs.version.outputs.version }}"
+          if [ -z "$VERSION" ]; then
+            VERSION="${GITHUB_REF##*/}"
+          fi
+
           curl -H "Content-Type: application/json" -d '{
             "type": "message",
             "attachments": [{
@@ -421,7 +453,7 @@ jobs:
                 "body": [
                   {"type": "TextBlock", "size": "Large", "weight": "Bolder", "text": "'"$EMOJI"' Ciyex Portal UI - '${{ needs.version.outputs.environment }}'"},
                   {"type": "FactSet", "facts": [
-                    {"title": "Version", "value": "${{ needs.version.outputs.version }}"},
+                    {"title": "Version", "value": "'"$VERSION"'"},
                     {"title": "Status", "value": "'"$STATUS"'"},
                     {"title": "Actor", "value": "${{ github.actor }}"}
                   ]}

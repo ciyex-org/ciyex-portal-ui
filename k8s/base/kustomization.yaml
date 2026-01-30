@@ -5,6 +5,7 @@ resources:
   - deployment.yaml
   - service.yaml
   - ingress.yaml
+  - registry-secret.yaml
 
 commonLabels:
   app: ciyex-portal-ui

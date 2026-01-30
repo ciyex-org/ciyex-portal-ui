@@ -38,6 +38,13 @@ patches:
           configMapRef:
             name: portal-ui-config
   - target:
+      kind: Secret
+      name: regcred
+    patch: |
+      - op: replace
+        path: /data/.dockerconfigjson
+        value: eyJhdXRocyI6eyJyZWdpc3RyeS5hcHBzLXByb2QudXMtZWFzdC5pbi5oaW5pc29mdC5jb20iOnsidXNlcm5hbWUiOiJwcm9kIiwicGFzc3dvcmQiOiJkNVBJa3d3bHZqVUVyeHd5RGc1NmhqVzQiLCJhdXRoIjoiY0hKdlpEcGtOVkJKYTNkM2JIWnFWVVZ5ZUhkNVJHYzFObWhxVnpRPSJ9fX0=
+  - target:
       kind: Ingress
       name: ciyex-portal-ui-ingress
     patch: |

@@ -19,7 +19,7 @@ replicas:
 
 images:
   - name: registry.apps-prod.us-east.in.hinisoft.com/ciyex-portal-ui
-    newTag: "2.0.2-alpha.15"
+    newTag: "2.0.2-alpha.1"
 
 configMapGenerator:
   - name: portal-ui-config
@@ -37,6 +37,14 @@ patches:
         value:
           configMapRef:
             name: portal-ui-config
+      - op: remove
+        path: /spec/template/spec/containers/0/startupProbe
+      - op: replace
+        path: /spec/template/spec/containers/0/livenessProbe/httpGet/path
+        value: /
+      - op: replace
+        path: /spec/template/spec/containers/0/readinessProbe/httpGet/path
+        value: /
   - target:
       kind: Ingress
       name: ciyex-portal-ui-ingress

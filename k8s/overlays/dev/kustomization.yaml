@@ -19,7 +19,7 @@ replicas:
 
 images:
   - name: registry.apps-prod.us-east.in.hinisoft.com/ciyex-portal-ui
-    newTag: "2.0.2-alpha.1"
+    newTag: "0.0.1-alpha.1"
 
 configMapGenerator:
   - name: portal-ui-config

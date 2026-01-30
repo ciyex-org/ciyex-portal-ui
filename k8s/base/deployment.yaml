@@ -14,28 +14,52 @@ spec:
       labels:
         app: ciyex-portal-ui
     spec:
-      imagePullSecrets:
-        - name: regcred
+      # imagePullSecrets optional - uncomment if using private registry
+      # imagePullSecrets:
+      #   - name: regcred
       containers:
         - name: ciyex-portal-ui
-          image: ciyex-portal-ui:latest
-          imagePullPolicy: IfNotPresent
+          # Use the registry-qualified image by default so overlays and ArgoCD
+          # show a consistent deployed image when overlays are not applied.
+          image: ciyex/ciyex-portal-ui:2.0.2
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000
-          livenessProbe:
+          startupProbe:
             httpGet:
-              path: /
-              port: 3000
-            initialDelaySeconds: 30
-            periodSeconds: 20
-            failureThreshold: 3
-          readinessProbe:
-            httpGet:
-              path: /
+              path: /api/health
               port: 3000
             initialDelaySeconds: 10
             periodSeconds: 10
+            failureThreshold: 30
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 5
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 15
             failureThreshold: 3
+            timeoutSeconds: 5
           env:
             - name: NODE_ENV
               value: "production"
+          envFrom:
+            - configMapRef:
+                name: portal-ui-config
+                optional: true
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"

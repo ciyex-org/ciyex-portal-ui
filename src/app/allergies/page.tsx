@@ -50,7 +50,8 @@ export default function AllergiesPage() {
         severity: item.severity
       }));
       setAllergies(mapped);
-    } catch {
+    } catch (error) {
+      console.error("Failed to load allergies:", error);
       setAlert({ variant: "error", title: "Error", message: "Failed to load allergies." });
     }
   }
@@ -66,7 +67,8 @@ export default function AllergiesPage() {
         year: item.date_occurred || item.onset_date ? new Date(item.date_occurred || item.onset_date).getFullYear().toString() : ''
       }));
       setHistory(mapped);
-    } catch {
+    } catch (error) {
+      console.error("Failed to load history:", error);
       setAlert({ variant: "error", title: "Error", message: "Failed to load history." });
     }
   }

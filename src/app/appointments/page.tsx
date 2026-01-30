@@ -11,7 +11,8 @@ async function safeJson(res: Response) {
   const text = await res.text();
   try {
     return text ? JSON.parse(text) : {};
-  } catch {
+  } catch (error) {
+    console.error("❌ Invalid JSON:", { status: res.status, text: text.slice(0, 200), error });
     return {};
   }
 }

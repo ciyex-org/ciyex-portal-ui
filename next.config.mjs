@@ -2,8 +2,12 @@
 const nextConfig = {
   /* config options here */
   typescript: {
-    // skip type errors during production build
-    ignoreBuildErrors: true,
+    // Enable type checking during build
+    ignoreBuildErrors: false,
+  },
+  eslint: {
+    // Enable ESLint during build
+    ignoreDuringBuilds: false,
   },
   // Configure Turbopack for SVG imports as React components
   turbopack: {

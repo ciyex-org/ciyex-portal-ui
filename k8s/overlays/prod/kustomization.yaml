@@ -19,10 +19,25 @@ replicas:
 
 images:
   - name: ciyex-portal-ui
-    newName: nginx
-    newTag: "latest"
+    newName: ciyex/ciyex-portal-ui
+    newTag: "2.0.2"
+
+configMapGenerator:
+  - name: portal-ui-config
+    literals:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=https://ciyex-api.apps-prod.in.hinisoft.com
 
 patches:
+  - target:
+      kind: Deployment
+      name: ciyex-portal-ui
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/envFrom/0
+        value:
+          configMapRef:
+            name: portal-ui-config
   - target:
       kind: Ingress
       name: ciyex-portal-ui-ingress
@@ -33,9 +48,3 @@ patches:
       - op: replace
         path: /spec/tls/0/hosts/0
         value: ciyex-portal.apps-prod.in.hinisoft.com
-
-configMapGenerator:
-  - name: portal-ui-config
-    literals:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=https://app.ciyex.com/api

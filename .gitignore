@@ -37,6 +37,11 @@ pnpm-debug.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# backup files
+*-commented-backup.*
+*-backup.*
+*.backup
+
 # IDEs and editors
 .vscode/
 .idea/

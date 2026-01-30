@@ -48,9 +48,9 @@ function toDobArray(dob: string | undefined): number[] | undefined {
 async function safeJson(res: Response) {
   const text = await res.text();
   try {
-    return JSON.parse(text);
-  } catch {
-    console.error("❌ Invalid JSON:", text);
+    return text ? JSON.parse(text) : {};
+  } catch (error) {
+    console.error("❌ Invalid JSON:", { text: text.slice(0, 200), error });
     throw new Error("Invalid JSON from server");
   }
 }

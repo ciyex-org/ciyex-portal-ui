@@ -137,7 +137,7 @@ export function useDocuments() {
 
   useEffect(() => {
     loadDocuments();
-  }, []);
+  }, [loadDocuments]);
 
   return { documents, loading, error, downloadDocument, viewDocument, deleteDocument, archiveDocument };
 }

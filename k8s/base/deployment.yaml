@@ -15,7 +15,7 @@ spec:
         app: ciyex-portal-ui
     spec:
       imagePullSecrets:
-        - name: regcred
+        - name: ciyex-portal-ui-regcred
       containers:
         - name: ciyex-portal-ui
           image: registry.apps-prod.us-east.in.hinisoft.com/ciyex-portal-ui:2.0.2

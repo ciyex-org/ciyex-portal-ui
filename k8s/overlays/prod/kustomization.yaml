@@ -39,7 +39,7 @@ patches:
             name: portal-ui-config
   - target:
       kind: Secret
-      name: regcred
+      name: ciyex-portal-ui-regcred
     patch: |
       - op: replace
         path: /data/.dockerconfigjson

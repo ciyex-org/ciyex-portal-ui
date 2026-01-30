@@ -141,6 +141,7 @@ export default function PatientPortalAuth() {
                 localStorage.setItem(
                     "user",
                     JSON.stringify({
+                        ...data.data,
                         firstName,
                         lastName,
                         email,
@@ -150,7 +151,6 @@ export default function PatientPortalAuth() {
                         dateOfBirth: normalizeDob(dateOfBirth),
                         orgName: org.orgName,
                         role,
-                        ...data.data,
                     })
                 );
 

@@ -20,7 +20,7 @@ replicas:
 images:
   - name: ciyex-portal-ui
     newName: ciyex/ciyex-portal-ui
-    newTag: "2.0.2"
+    newTag: "2.0.2-alpha.16"
 
 configMapGenerator:
   - name: portal-ui-config

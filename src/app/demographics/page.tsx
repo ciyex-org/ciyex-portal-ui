@@ -91,10 +91,11 @@ export default function DemographicsPage() {
         setDemographics(formatted);
         setOriginal(formatted);
       } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Could not load demographics";
         setAlert({
           variant: "error",
           title: "Error",
-          message: "Could not load demographics.",
+          message: errorMessage,
         });
       } finally {
         setLoading(false);

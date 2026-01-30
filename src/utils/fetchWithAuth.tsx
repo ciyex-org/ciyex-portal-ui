@@ -14,7 +14,6 @@ export async function fetchWithAuth(
   }
 
   if (!token) {
-    console.error("❌ Missing token even after waiting");
     if (typeof window !== "undefined") {
       window.location.href = "/signin";
     }

@@ -301,14 +301,13 @@ function PatientDashboard() {
                         }
                     }
                 } catch (err) {
-                    console.log('Could not fetch communications:', err);
-                    // Keep empty activities array
+                    // Communications optional - continue without them
                     setRecentActivities([]);
                 }
 
             } catch (error) {
-                console.error('Error fetching dashboard data:', error);
-                setError('Failed to load dashboard information');
+                const errorMessage = error instanceof Error ? error.message : 'Failed to load dashboard information';
+                setError(errorMessage);
             } finally {
                 setLoading(false);
             }

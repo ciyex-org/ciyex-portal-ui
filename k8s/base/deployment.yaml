@@ -14,14 +14,11 @@ spec:
       labels:
         app: ciyex-portal-ui
     spec:
-      # imagePullSecrets optional - uncomment if using private registry
-      # imagePullSecrets:
-      #   - name: regcred
+      imagePullSecrets:
+        - name: regcred
       containers:
         - name: ciyex-portal-ui
-          # Use the registry-qualified image by default so overlays and ArgoCD
-          # show a consistent deployed image when overlays are not applied.
-          image: ciyex/ciyex-portal-ui:2.0.2
+          image: registry.apps-prod.us-east.in.hinisoft.com/ciyex-portal-ui:2.0.2
           imagePullPolicy: Always
           ports:
             - containerPort: 3000

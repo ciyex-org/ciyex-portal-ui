@@ -18,8 +18,7 @@ replicas:
     count: 1
 
 images:
-  - name: ciyex-portal-ui
-    newName: ciyex/ciyex-portal-ui
+  - name: registry.apps-prod.us-east.in.hinisoft.com/ciyex-portal-ui
     newTag: "2.0.2"
 
 configMapGenerator:

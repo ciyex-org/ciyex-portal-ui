@@ -15,7 +15,7 @@ labels:
 
 replicas:
   - name: ciyex-portal-ui
-    count: 2
+    count: 0
 
 images:
   - name: registry.apps-prod.us-east.in.hinisoft.com/ciyex-portal-ui

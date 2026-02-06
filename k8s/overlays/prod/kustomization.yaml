@@ -15,17 +15,17 @@ labels:
 
 replicas:
   - name: ciyex-portal-ui
-    count: 0
+    count: 1
 
 images:
   - name: registry.apps-prod.us-east.in.hinisoft.com/ciyex-portal-ui
-    newTag: "latest"
+    newTag: "0.0.1-alpha.8"
 
 configMapGenerator:
   - name: portal-ui-config
     literals:
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=https://ciyex-api.apps-prod.in.hinisoft.com
+      - NEXT_PUBLIC_API_URL=https://api.ciyex.org
 
 patches:
   - target:

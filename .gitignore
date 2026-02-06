@@ -37,6 +37,10 @@ pnpm-debug.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Environment files
+.env
+.env.*
+
 # backup files
 *-commented-backup.*
 *-backup.*

@@ -26,6 +26,10 @@ configMapGenerator:
     literals:
       - NODE_ENV=development
       - NEXT_PUBLIC_API_URL=https://api-dev.ciyex.org
+      - NEXT_PUBLIC_KEYCLOAK_URL=https://dev.aran.me
+      - NEXT_PUBLIC_KEYCLOAK_REALM=master
+      - NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=ciyex-app
+      - NEXT_PUBLIC_KEYCLOAK_ENABLED=true
 
 patches:
   - target:
@@ -51,7 +55,7 @@ patches:
     patch: |
       - op: replace
         path: /spec/rules/0/host
-        value: ciyex-portal.apps-dev.in.hinisoft.com
+        value: portal-dev.ciyex.org
       - op: replace
         path: /spec/tls/0/hosts/0
-        value: ciyex-portal.apps-dev.in.hinisoft.com
+        value: portal-dev.ciyex.org

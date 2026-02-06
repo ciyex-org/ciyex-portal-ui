@@ -15,7 +15,7 @@ labels:
 
 replicas:
   - name: ciyex-portal-ui
-    count: 0
+    count: 1
 
 images:
   - name: registry.apps-prod.us-east.in.hinisoft.com/ciyex-portal-ui
@@ -25,7 +25,7 @@ configMapGenerator:
   - name: portal-ui-config
     literals:
       - NODE_ENV=development
-      - NEXT_PUBLIC_API_URL=https://ciyex-api.apps-dev.in.hinisoft.com
+      - NEXT_PUBLIC_API_URL=https://api-dev.ciyex.org
 
 patches:
   - target:

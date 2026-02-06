@@ -12,7 +12,7 @@ spec:
     targetRevision: main
     path: k8s/overlays/dev
   destination:
-    server: https://kubernetes.default.svc
+    server: https://10.0.0.50:6443
     namespace: ciyex-dev
   syncPolicy:
     automated:

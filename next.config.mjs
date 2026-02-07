@@ -5,10 +5,6 @@ const nextConfig = {
     // Enable type checking during build
     ignoreBuildErrors: false,
   },
-  eslint: {
-    // Enable ESLint during build
-    ignoreDuringBuilds: false,
-  },
   // Configure Turbopack for SVG imports as React components
   turbopack: {
     rules: {

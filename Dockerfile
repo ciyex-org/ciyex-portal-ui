@@ -4,7 +4,7 @@ FROM node:24-alpine AS builder
 # Build argument for environment (dev, stage, prod)
 ARG ENVIRONMENT=stage
 
-RUN npm install -g pnpm@9
+RUN npm install -g pnpm
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
@@ -20,7 +20,7 @@ RUN pnpm run build
 # Production stage
 FROM node:24-alpine AS runner
 
-RUN npm install -g pnpm@9
+RUN npm install -g pnpm
 WORKDIR /app
 
 ENV NODE_ENV=production

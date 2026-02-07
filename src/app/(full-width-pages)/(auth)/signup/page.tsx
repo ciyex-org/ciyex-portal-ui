@@ -1,5 +1,6 @@
 "use client";
 
+import { getEnv } from "@/utils/env";
 import { useState, useEffect, FormEvent, KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
@@ -69,7 +70,7 @@ export default function SignUpPage() {
       }
       try {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/portal/orgs/search?query=${encodeURIComponent(orgSearch)}`,
+          `${getEnv("NEXT_PUBLIC_API_URL")}/api/portal/orgs/search?query=${encodeURIComponent(orgSearch)}`,
           { headers: { Accept: "application/json" } }
         );
         const text = await res.text();
@@ -140,7 +141,7 @@ export default function SignUpPage() {
     try {
       const payload = { ...form, captcha: captchaToken, role: "PATIENT" };
       // ✅ Use plain fetch for registration (no auth required)
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/portal/auth/register`, {
+      const res = await fetch(`${getEnv("NEXT_PUBLIC_API_URL")}/api/portal/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -190,7 +191,7 @@ export default function SignUpPage() {
       if (!session?.user?.email) throw new Error("Google profile not found");
 
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/portal/auth/register`,
+        `${getEnv("NEXT_PUBLIC_API_URL")}/api/portal/auth/register`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -335,7 +336,7 @@ export default function SignUpPage() {
 
             {/* Captcha */}
             <div className="flex justify-center col-span-2 my-2">
-              <ReCAPTCHA sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY as string} onChange={handleCaptcha} />
+              <ReCAPTCHA sitekey={getEnv("NEXT_PUBLIC_RECAPTCHA_SITE_KEY") as string} onChange={handleCaptcha} />
             </div>
 
             <button type="submit" disabled={loading} className="bg-blue-600 text-white py-2 rounded hover:bg-blue-700 col-span-2">

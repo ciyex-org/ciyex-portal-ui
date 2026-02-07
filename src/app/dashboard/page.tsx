@@ -1,5 +1,6 @@
 'use client';
 
+import { getEnv } from "@/utils/env";
 import React, { useState, useEffect } from 'react';
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
 import { useMedications } from '@/hooks/useMedications';
@@ -122,7 +123,7 @@ function PatientDashboard() {
             }
 
             try {
-                const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
+                const apiBase = getEnv("NEXT_PUBLIC_API_URL") ?? 'http://localhost:8080';
 
                 // Get basic user info from localStorage instead of API call
                 const userData = JSON.parse(user);

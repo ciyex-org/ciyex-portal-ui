@@ -1,3 +1,4 @@
+import { getEnv } from "@/utils/env";
 export async function fetchWithAuth(
   input: RequestInfo,
   init: RequestInit = {}
@@ -54,7 +55,7 @@ export async function fetchWithAuth(
   if (typeof input === "string") {
     url = /^https?:\/\//i.test(input)
       ? input
-      : `${process.env.NEXT_PUBLIC_API_URL}${input}`;
+      : `${getEnv("NEXT_PUBLIC_API_URL")}${input}`;
   } else {
     url = (input as Request).url;
   }

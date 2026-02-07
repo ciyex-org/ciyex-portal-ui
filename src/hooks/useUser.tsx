@@ -1,5 +1,6 @@
 "use client";
 
+import { getEnv } from "@/utils/env";
 import React, { createContext, useContext, useState, useEffect } from "react";
 
 interface Org {
@@ -58,7 +59,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         const updatedUser = { ...user, ...updates };
 
         const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/auth/user/${user.email}`,
+            `${getEnv("NEXT_PUBLIC_API_URL")}/api/auth/user/${user.email}`,
             {
                 method: "PUT",
                 headers: {

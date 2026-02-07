@@ -1,5 +1,6 @@
 "use client";
 
+import { getEnv } from "@/utils/env";
 import { useEffect, useState } from "react";
 import AdminLayout from "@/app/(admin)/layout";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
@@ -194,7 +195,7 @@ export default function InsurancePage() {
     async function loadCompanies() {
       try {
         const res = await fetchWithAuth(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/insurance-companies`
+          `${getEnv("NEXT_PUBLIC_API_URL")}/api/insurance-companies`
         );
         const data = await res.json();
         // Accept either { data: [...] } or plain array response
@@ -214,7 +215,7 @@ export default function InsurancePage() {
     async function loadProfile() {
       try {
         const res = await fetchWithAuth(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/portal/patient/me`
+          `${getEnv("NEXT_PUBLIC_API_URL")}/api/portal/patient/me`
         );
         if (!res.ok) return;
         const data = await res.json();
@@ -436,8 +437,8 @@ export default function InsurancePage() {
       // Use PUT for updates, POST for creates
       const method = coverageId ? "PUT" : "POST";
       const url = coverageId
-        ? `${process.env.NEXT_PUBLIC_API_URL}/api/coverages/${coverageId}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/api/coverages`;
+        ? `${getEnv("NEXT_PUBLIC_API_URL")}/api/coverages/${coverageId}`
+        : `${getEnv("NEXT_PUBLIC_API_URL")}/api/coverages`;
 
       console.log("📡 API Request:", method, url);
       console.log("📦 Request body:", JSON.stringify(coverageData, null, 2));
@@ -518,7 +519,7 @@ export default function InsurancePage() {
         frontFormData.append("file", policy.cardFrontFile);
 
         const frontResponse = await fetchWithAuth(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/coverages/${coverageId}/card/front`,
+          `${getEnv("NEXT_PUBLIC_API_URL")}/api/coverages/${coverageId}/card/front`,
           {
             method: "POST",
             body: frontFormData,
@@ -539,7 +540,7 @@ export default function InsurancePage() {
         backFormData.append("file", policy.cardBackFile);
 
         const backResponse = await fetchWithAuth(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/coverages/${coverageId}/card/back`,
+          `${getEnv("NEXT_PUBLIC_API_URL")}/api/coverages/${coverageId}/card/back`,
           {
             method: "POST",
             body: backFormData,
@@ -629,7 +630,7 @@ export default function InsurancePage() {
       }
 
       const response = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/insurance-companies`,
+        `${getEnv("NEXT_PUBLIC_API_URL")}/api/insurance-companies`,
         {
           method: "POST",
           headers: {
@@ -734,7 +735,7 @@ export default function InsurancePage() {
 
     try {
       const response = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/coverages/${coverageId}/archive`,
+        `${getEnv("NEXT_PUBLIC_API_URL")}/api/coverages/${coverageId}/archive`,
         {
           method: "PUT",
         }

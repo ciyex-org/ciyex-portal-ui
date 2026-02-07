@@ -1,5 +1,6 @@
 "use client";
 
+import { getEnv } from "@/utils/env";
 import { useEffect, useState } from "react";
 import AdminLayout from "@/app/(admin)/layout";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
@@ -59,7 +60,7 @@ async function safeJson(res: Response) {
    MAIN COMPONENT
 --------------------------------------------- */
 export default function DemographicsPage() {
-  const API = process.env.NEXT_PUBLIC_API_URL; // <— FIXED
+  const API = getEnv("NEXT_PUBLIC_API_URL"); // <— FIXED
 
   const [demographics, setDemographics] = useState<Demographics | null>(null);
   const [original, setOriginal] = useState<Demographics | null>(null);

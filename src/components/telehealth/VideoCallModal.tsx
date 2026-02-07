@@ -1,5 +1,6 @@
 "use client";
 
+import { getEnv } from "@/utils/env";
 import React, { useState } from "react";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
 import Alert from "@/components/ui/alert/Alert";
@@ -33,7 +34,7 @@ const VideoCallModal: React.FC<VideoCallModalProps> = ({
   providerName,
   roomName: providedRoomName,
 }) => {
-  const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
+  const apiUrl = getEnv("NEXT_PUBLIC_BACKEND_URL") || 'http://localhost:8080';
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");

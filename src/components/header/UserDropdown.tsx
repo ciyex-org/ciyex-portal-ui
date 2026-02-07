@@ -1,5 +1,6 @@
 "use client";
 
+import { getEnv } from "@/utils/env";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
@@ -64,9 +65,9 @@ export default function UserDropdown() {
 
     // If Keycloak was the auth method, redirect to Keycloak logout
     if (authMethod === 'keycloak') {
-      const keycloakUrl = process.env.NEXT_PUBLIC_KEYCLOAK_URL;
-      const keycloakRealm = process.env.NEXT_PUBLIC_KEYCLOAK_REALM;
-      const keycloakClientId = process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID;
+      const keycloakUrl = getEnv("NEXT_PUBLIC_KEYCLOAK_URL");
+      const keycloakRealm = getEnv("NEXT_PUBLIC_KEYCLOAK_REALM");
+      const keycloakClientId = getEnv("NEXT_PUBLIC_KEYCLOAK_CLIENT_ID");
 
       if (keycloakUrl && keycloakRealm) {
         const redirect = encodeURIComponent(window.location.origin + '/signin');

@@ -409,7 +409,7 @@ jobs:
         run: |
           VERSION="${{ needs.version.outputs.version }}"
           ENV="${{ needs.version.outputs.environment }}"
-          docker build --build-arg ENVIRONMENT=$ENV -t $REGISTRY/$IMAGE_NAME:$VERSION -t $REGISTRY/$IMAGE_NAME:$ENV .
+          docker build -t $REGISTRY/$IMAGE_NAME:$VERSION -t $REGISTRY/$IMAGE_NAME:$ENV .
           docker push $REGISTRY/$IMAGE_NAME:$VERSION
           docker push $REGISTRY/$IMAGE_NAME:$ENV
           echo "✅ Pushed: $REGISTRY/$IMAGE_NAME:$VERSION"

@@ -1,3 +1,4 @@
+import { getEnv } from "@/utils/env";
 import { useState, useEffect, useCallback } from 'react';
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
 
@@ -36,7 +37,7 @@ export function useNotifications() {
       const allNotifications: Notification[] = [];
       
       // Load messages
-      const messagesRes = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/api/portal/communications/my`);
+      const messagesRes = await fetchWithAuth(`${getEnv("NEXT_PUBLIC_API_URL")}/api/portal/communications/my`);
       if (messagesRes.ok) {
         const data = await messagesRes.json();
         if (data.success && Array.isArray(data.data)) {
@@ -55,7 +56,7 @@ export function useNotifications() {
       }
       
       // Load appointments (upcoming)
-      const appointmentsRes = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/api/portal/appointments`);
+      const appointmentsRes = await fetchWithAuth(`${getEnv("NEXT_PUBLIC_API_URL")}/api/portal/appointments`);
       if (appointmentsRes.ok) {
         const data = await appointmentsRes.json();
         if (data.success && Array.isArray(data.data)) {

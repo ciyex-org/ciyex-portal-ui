@@ -1,3 +1,4 @@
+import { getEnv } from "@/utils/env";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
@@ -17,7 +18,7 @@ export default async function handler(
   res: NextApiResponse
 ) {
   try {
-    const backend = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+    const backend = getEnv("NEXT_PUBLIC_API_URL") || "http://localhost:8080";
     const path = Array.isArray(req.query.path) ? req.query.path.join("/") : req.query.path || "";
     
     // Special handling for list-options to match backend endpoint structure

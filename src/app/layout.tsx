@@ -4,6 +4,7 @@ import "./globals.css";
 
 import { SidebarProvider } from "@/context/SidebarContext";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { EnvProvider } from "@/context/EnvContext";
 import { UserProvider } from "@/hooks/useUser";   // ✅ add this
 
 const outfit = Outfit({
@@ -32,13 +33,15 @@ export default function RootLayout({
             <link rel="shortcut icon" href="/shield-favicon.ico" type="image/x-icon" />
         </head>
         <body className={`${outfit.className} dark:bg-gray-900`}>
-        <ThemeProvider>
-            <SidebarProvider>
-                <UserProvider>      {/* ✅ wrap your app */}
-                    {children}
-                </UserProvider>
-            </SidebarProvider>
-        </ThemeProvider>
+        <EnvProvider>
+            <ThemeProvider>
+                <SidebarProvider>
+                    <UserProvider>      {/* ✅ wrap your app */}
+                        {children}
+                    </UserProvider>
+                </SidebarProvider>
+            </ThemeProvider>
+        </EnvProvider>
         </body>
         </html>
     );

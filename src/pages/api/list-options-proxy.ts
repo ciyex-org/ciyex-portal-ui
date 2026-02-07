@@ -1,3 +1,4 @@
+import { getEnv } from "@/utils/env";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
@@ -11,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ success: false, message: "Missing listId", data: [] });
     }
 
-    const backend = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+    const backend = getEnv("NEXT_PUBLIC_API_URL") || "http://localhost:8080";
     const target = `${backend}/api/portal/list-options/list/${encodeURIComponent(String(listId))}`;
 
     // 🪪 Prepare headers (patient JWT if present, fallback to service token)

@@ -1,4 +1,5 @@
 "use client";
+import { getEnv } from "@/utils/env";
 import React, { useState, useEffect } from "react";
 
 interface BillingCardData {
@@ -50,7 +51,7 @@ const GpsBillingCard: React.FC = () => {
     const loadGpsCards = async () => {
         try {
             // Note: You'll need to implement fetchWithAuth utility for portal UI
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/gps/billing/cards/user/1`, {
+            const response = await fetch(`${getEnv("NEXT_PUBLIC_API_URL")}/api/gps/billing/cards/user/1`, {
                 headers: { "x-org-id": "1" },
             });
             
@@ -117,7 +118,7 @@ const GpsBillingCard: React.FC = () => {
                 userId: 1, // This should come from user context
             };
 
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/gps/billing/tokenize`, {
+            const response = await fetch(`${getEnv("NEXT_PUBLIC_API_URL")}/api/gps/billing/tokenize`, {
                 method: "POST",
                 headers: { 
                     "Content-Type": "application/json", 
@@ -161,7 +162,7 @@ const GpsBillingCard: React.FC = () => {
 
     const deleteCard = async (cardId: number) => {
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/gps/billing/cards/${cardId}`, {
+            const response = await fetch(`${getEnv("NEXT_PUBLIC_API_URL")}/api/gps/billing/cards/${cardId}`, {
                 method: "DELETE",
                 headers: { "x-org-id": "1" },
             });

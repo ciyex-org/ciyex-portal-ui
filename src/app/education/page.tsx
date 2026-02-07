@@ -1,5 +1,6 @@
 "use client";
 
+import { getEnv } from "@/utils/env";
 import { useEffect, useState, useCallback } from "react";
 
 import AdminLayout from "@/app/(admin)/layout";
@@ -55,7 +56,7 @@ export default function PatientEducationPage() {
   const loadTopics = useCallback(async () => {
     try {
       const res = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/patient-education?page=0&size=100`
+        `${getEnv("NEXT_PUBLIC_API_URL")}/api/patient-education?page=0&size=100`
       );
       const response = await res.json();
       // Backend returns ApiResponse<Page<PatientEducationDto>>
@@ -75,7 +76,7 @@ export default function PatientEducationPage() {
       // Flow: JWT email → PortalUser → PortalPatient → ehrPatientId → assignments
       // This ensures each patient sees ONLY their own assignments (no hardcoded IDs!)
       const res = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/portal/patient-education-assignments/my-assignments`
+        `${getEnv("NEXT_PUBLIC_API_URL")}/api/portal/patient-education-assignments/my-assignments`
       );
       const response = await res.json();
       // Backend returns ApiResponse<List<PatientEducationAssignmentDto>>

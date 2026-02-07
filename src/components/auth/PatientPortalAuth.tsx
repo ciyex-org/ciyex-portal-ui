@@ -1,5 +1,6 @@
 "use client";
 
+import { getEnv } from "@/utils/env";
 import React, { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
@@ -69,7 +70,7 @@ export default function PatientPortalAuth() {
         password: "",
     });
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+    const apiUrl = getEnv("NEXT_PUBLIC_API_URL") || "";
 
     const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -381,7 +382,7 @@ export default function PatientPortalAuth() {
 
                             <div className="flex justify-center">
                                 <ReCAPTCHA
-                                    sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "6Lc_DccrAAAAAOM3CVIEfqvGyqirsBZ32QhZuXYz"}
+                                    sitekey={getEnv("NEXT_PUBLIC_RECAPTCHA_SITE_KEY") || "6Lc_DccrAAAAAOM3CVIEfqvGyqirsBZ32QhZuXYz"}
                                     onChange={handleCaptcha}
                                 />
                             </div>

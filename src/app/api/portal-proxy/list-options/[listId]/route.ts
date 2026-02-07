@@ -1,3 +1,4 @@
+import { getEnv } from "@/utils/env";
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
@@ -7,7 +8,7 @@ export async function GET(
   const { listId } = await params;
 
   try {
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
+    const backendUrl = getEnv("NEXT_PUBLIC_BACKEND_URL") || 'http://localhost:8080';
     const token = request.headers.get('authorization');
 
     if (!token) {

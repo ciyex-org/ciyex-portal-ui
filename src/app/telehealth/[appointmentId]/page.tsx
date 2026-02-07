@@ -1,5 +1,6 @@
 "use client";
 
+import { getEnv } from "@/utils/env";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
@@ -11,7 +12,7 @@ export default function PatientTelehealthPage() {
   const router = useRouter();
   const appointmentId = params?.appointmentId as string;
 
-  const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+  const API_BASE = getEnv("NEXT_PUBLIC_BACKEND_URL") || "http://localhost:8080";
 
   const [meetingUrl, setMeetingUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -77,7 +78,7 @@ export default function PatientTelehealthPage() {
         // Fallback: Generate Jitsi URL directly if backend doesn't provide one
         if (!url) {
           console.warn('No meeting URL in response, generating fallback URL');
-          const jitsiDomain = process.env.NEXT_PUBLIC_JITSI_DOMAIN || 'meet.jit.si';
+          const jitsiDomain = getEnv("NEXT_PUBLIC_JITSI_DOMAIN") || 'meet.jit.si';
           url = `https://${jitsiDomain}/${roomName}?jwt=${joinData.token || ''}`;
         }
 

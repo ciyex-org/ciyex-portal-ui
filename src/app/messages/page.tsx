@@ -1,5 +1,6 @@
 "use client";
 
+import { getEnv } from "@/utils/env";
 import AdminLayout from "@/app/(admin)/layout";
 import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
@@ -649,7 +650,7 @@ export default function MessagingPage() {
     const loadMessageAttachments = useCallback(async (messageId: number): Promise<Attachment[]> => {
         try {
             const res = await fetchWithAuth(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/portal/messages/${messageId}/attachments`
+                `${getEnv("NEXT_PUBLIC_API_URL")}/api/portal/messages/${messageId}/attachments`
             );
 
             if (!res.ok) {
@@ -667,7 +668,7 @@ export default function MessagingPage() {
                     uploadedAt: attachment.createdDate,
                     uploadedBy: attachment.uploadedBy,
                     type: getFileType(attachment.contentType, attachment.fileName),
-                    downloadUrl: `${process.env.NEXT_PUBLIC_API_URL}/api/portal/messages/${messageId}/attachments/${attachment.id}/download`
+                    downloadUrl: `${getEnv("NEXT_PUBLIC_API_URL")}/api/portal/messages/${messageId}/attachments/${attachment.id}/download`
                 }));
             }
             return [];
@@ -681,7 +682,7 @@ export default function MessagingPage() {
     const downloadAttachment = async (messageId: number, attachmentId: string, fileName: string) => {
         try {
             const res = await fetchWithAuth(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/portal/messages/${messageId}/attachments/${attachmentId}/download`
+                `${getEnv("NEXT_PUBLIC_API_URL")}/api/portal/messages/${messageId}/attachments/${attachmentId}/download`
             );
 
             if (!res.ok) {
@@ -722,7 +723,7 @@ export default function MessagingPage() {
         formData.append('file', file);
 
         const res = await fetchWithAuth(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/portal/messages/${messageId}/attachments`,
+            `${getEnv("NEXT_PUBLIC_API_URL")}/api/portal/messages/${messageId}/attachments`,
             {
                 method: 'POST',
                 body: formData,
@@ -786,7 +787,7 @@ export default function MessagingPage() {
         setLoadingProvider(true);
         try {
             const res = await fetchWithAuth(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/fhir/portal/providers/${providerId}`
+                `${getEnv("NEXT_PUBLIC_API_URL")}/api/fhir/portal/providers/${providerId}`
             );
 
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -827,7 +828,7 @@ export default function MessagingPage() {
 
         try {
             const res = await fetchWithAuth(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/portal/communications/my`
+                `${getEnv("NEXT_PUBLIC_API_URL")}/api/portal/communications/my`
             );
 
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -939,7 +940,7 @@ export default function MessagingPage() {
         try {
             // First, send the message reply
             const res = await fetchWithAuth(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/portal/communications/send`,
+                `${getEnv("NEXT_PUBLIC_API_URL")}/api/portal/communications/send`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -1004,7 +1005,7 @@ export default function MessagingPage() {
         try {
             // First, send the message
             const res = await fetchWithAuth(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/portal/communications/send`,
+                `${getEnv("NEXT_PUBLIC_API_URL")}/api/portal/communications/send`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },

@@ -7,6 +7,7 @@ type EnvConfig = {
   NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: string;
   NEXT_PUBLIC_JITSI_DOMAIN: string;
   NEXT_PUBLIC_RECAPTCHA_SITE_KEY: string;
+  NEXT_PUBLIC_ORG_ALIAS: string;
 };
 
 let cachedConfig: EnvConfig | null = null;
@@ -28,6 +29,7 @@ async function fetchConfig(): Promise<EnvConfig> {
       NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: "ciyex-app",
       NEXT_PUBLIC_JITSI_DOMAIN: "",
       NEXT_PUBLIC_RECAPTCHA_SITE_KEY: "",
+      NEXT_PUBLIC_ORG_ALIAS: "",
     };
   }
 }

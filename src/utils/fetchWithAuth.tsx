@@ -35,9 +35,11 @@ export async function fetchWithAuth(
     });
   }
 
+  const orgAlias = getEnv("NEXT_PUBLIC_ORG_ALIAS");
   const authHeaders: Record<string, string> = {
     "Accept": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(orgAlias ? { "X-Org-Alias": orgAlias } : {}),
   };
 
   // Don't set Content-Type for FormData - let browser set it automatically

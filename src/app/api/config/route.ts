@@ -10,5 +10,6 @@ export async function GET() {
     NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID || "ciyex-app",
     NEXT_PUBLIC_JITSI_DOMAIN: process.env.NEXT_PUBLIC_JITSI_DOMAIN || "",
     NEXT_PUBLIC_RECAPTCHA_SITE_KEY: process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "",
+    NEXT_PUBLIC_ORG_ALIAS: process.env.NEXT_PUBLIC_ORG_ALIAS || "",
   });
 }

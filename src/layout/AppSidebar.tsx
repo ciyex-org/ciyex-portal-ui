@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
+import { usePortalConfig, type PortalNavItem } from "@/hooks/usePortalConfig";
 
 // ---------- Types ----------
 type NavItem = {
@@ -11,96 +12,79 @@ type NavItem = {
   path: string;
 };
 
-// ---------- SVG ICONS ----------
-const DashboardIcon = (
-  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12h18M3 6h18M3 18h18"/>
-  </svg>
-);
-
-// const ProfileIcon = (
-//   <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-//     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zM4 21c0-3.3 2.7-6 6-6h4c3.3 0 6 2.7 6 6"/>
-//   </svg>
-// );
-
-const DemographicsIcon = (
-  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 7h14M5 11h14M5 15h10M5 19h6"/>
-  </svg>
-);
-
-const AppointmentIcon = (
-  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3M3 11h18M5 21h14a2 2 0 002-2V7H3v12a2 2 0 002 2z"/>
-  </svg>
-);
-
-// const EncounterIcon = (
-//   <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-//     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5l2 2h5a2 2 0 012 2v12a2 2 0 01-2 2z"/>
-//   </svg>
-// );
-
-const VitalsIcon = (
-  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12h16M12 4v16"/>
-  </svg>
-);
-
-const MedicationsIcon = (
-  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2m-6 0H7a2 2 0 01-2-2V8a2 2 0 012-2h4l2 2h4a2 2 0 012 2v2"/>
-  </svg>
-);
-
-const AllergiesIcon = (
-  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <circle cx="12" cy="12" r="10" strokeWidth={2}/>
-  </svg>
-);
-
-const MessagesIcon = (
-  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h6m-6 4h8m5-9v10a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-  </svg>
-);
-
-// const DocumentsIcon = (
-//   <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-//     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 20h9M12 4h9M4 9h16M4 15h16"/>
-//   </svg>
-// );
-
-const EducationIcon = (
-  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 7v-6"/>
-  </svg>
-);
-
-const BillingIcon = (
-  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-3.866 0-7 1.343-7 3v5c0 1.657 3.134 3 7 3s7-1.343 7-3v-5c0-1.657-3.134-3-7-3z"/>
-  </svg>
-);
-
-const InsuranceIcon = (
-  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-  </svg>
-);
-
-const LabsIcon = (
-  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10M9 17h6M12 3v14"/>
-  </svg>
-);
-
-const ReportsIcon = (
-  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6M5 7h14M5 19h14"/>
-  </svg>
-);
+// ---------- Icon Map ----------
+const ICON_MAP: Record<string, React.ReactNode> = {
+  dashboard: (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12h18M3 6h18M3 18h18"/>
+    </svg>
+  ),
+  demographics: (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 7h14M5 11h14M5 15h10M5 19h6"/>
+    </svg>
+  ),
+  appointments: (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3M3 11h18M5 21h14a2 2 0 002-2V7H3v12a2 2 0 002 2z"/>
+    </svg>
+  ),
+  vitals: (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12h16M12 4v16"/>
+    </svg>
+  ),
+  medications: (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2m-6 0H7a2 2 0 01-2-2V8a2 2 0 012-2h4l2 2h4a2 2 0 012 2v2"/>
+    </svg>
+  ),
+  allergies: (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10" strokeWidth={2}/>
+    </svg>
+  ),
+  messages: (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h6m-6 4h8m5-9v10a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+    </svg>
+  ),
+  education: (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 7v-6"/>
+    </svg>
+  ),
+  billing: (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-3.866 0-7 1.343-7 3v5c0 1.657 3.134 3 7 3s7-1.343 7-3v-5c0-1.657-3.134-3-7-3z"/>
+    </svg>
+  ),
+  insurance: (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    </svg>
+  ),
+  labs: (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10M9 17h6M12 3v14"/>
+    </svg>
+  ),
+  reports: (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6M5 7h14M5 19h14"/>
+    </svg>
+  ),
+  documents: (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 20h9M12 4h9M4 9h16M4 15h16"/>
+    </svg>
+  ),
+  telehealth: (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+    </svg>
+  ),
+};
 
 const SettingsIcon = (
   <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -108,23 +92,44 @@ const SettingsIcon = (
   </svg>
 );
 
-// ---------- Nav Items ----------
-const navItems: NavItem[] = [
-  { name: "Dashboard", icon: DashboardIcon, path: "/dashboard" },
-  // { name: "Profile", icon: ProfileIcon, path: "/profile" },
-  { name: "Demographics", icon: DemographicsIcon, path: "/demographics" },
-  { name: "Appointments", icon: AppointmentIcon, path: "/appointments" },
-  // { name: "Encounters", icon: EncounterIcon, path: "/encounters" },
-  { name: "Vitals", icon: VitalsIcon, path: "/vitals" },
-  { name: "Medications", icon: MedicationsIcon, path: "/medications" },
-  { name: "Allergies & History", icon: AllergiesIcon, path: "/allergies" },
-  { name: "Messages", icon: MessagesIcon, path: "/messages" },
-  // { name: "Documents", icon: DocumentsIcon, path: "/documents" },
-  { name: "Patient Education", icon: EducationIcon, path: "/education" },
-  { name: "Billing", icon: BillingIcon, path: "/billing" },
-  { name: "Insurance", icon: InsuranceIcon, path: "/insurance" },
-  { name: "Labs", icon: LabsIcon, path: "/labs" },
-  { name: "Reports", icon: ReportsIcon, path: "/reports" },
+const DefaultIcon = (
+  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="3" strokeWidth={2}/>
+  </svg>
+);
+
+// Route mapping: nav key → path
+const KEY_TO_PATH: Record<string, string> = {
+  dashboard: "/dashboard",
+  demographics: "/demographics",
+  appointments: "/appointments",
+  vitals: "/vitals",
+  medications: "/medications",
+  allergies: "/allergies",
+  messages: "/messages",
+  education: "/education",
+  billing: "/billing",
+  insurance: "/insurance",
+  labs: "/labs",
+  reports: "/reports",
+  documents: "/documents",
+  telehealth: "/telehealth",
+};
+
+// Default nav items (used when config hasn't loaded yet)
+const DEFAULT_NAV: NavItem[] = [
+  { name: "Dashboard", icon: ICON_MAP.dashboard, path: "/dashboard" },
+  { name: "Demographics", icon: ICON_MAP.demographics, path: "/demographics" },
+  { name: "Appointments", icon: ICON_MAP.appointments, path: "/appointments" },
+  { name: "Vitals", icon: ICON_MAP.vitals, path: "/vitals" },
+  { name: "Medications", icon: ICON_MAP.medications, path: "/medications" },
+  { name: "Allergies & History", icon: ICON_MAP.allergies, path: "/allergies" },
+  { name: "Messages", icon: ICON_MAP.messages, path: "/messages" },
+  { name: "Patient Education", icon: ICON_MAP.education, path: "/education" },
+  { name: "Billing", icon: ICON_MAP.billing, path: "/billing" },
+  { name: "Insurance", icon: ICON_MAP.insurance, path: "/insurance" },
+  { name: "Labs", icon: ICON_MAP.labs, path: "/labs" },
+  { name: "Reports", icon: ICON_MAP.reports, path: "/reports" },
 ];
 
 // ---------- Sidebar ----------
@@ -134,9 +139,28 @@ const AppSidebar: React.FC = () => {
   const [isHydrated, setIsHydrated] = useState(false);
   const isActive = useCallback((path: string) => path === pathname, [pathname]);
 
+  // Load portal configuration for dynamic navigation
+  const { config, loading: configLoading, isFeatureEnabled } = usePortalConfig();
+
   useEffect(() => {
     setIsHydrated(true);
   }, []);
+
+  // Build nav items from config, filtering by feature toggles
+  const navItems: NavItem[] = React.useMemo(() => {
+    const configNav = config?.navigation;
+    if (!configNav || configNav.length === 0) return DEFAULT_NAV;
+
+    return configNav
+      .filter((n) => n.visible)
+      .sort((a, b) => a.position - b.position)
+      .filter((n) => isFeatureEnabled(n.key))
+      .map((n) => ({
+        name: n.label,
+        icon: ICON_MAP[n.key] || DefaultIcon,
+        path: KEY_TO_PATH[n.key] || `/${n.key}`,
+      }));
+  }, [config?.navigation, isFeatureEnabled]);
 
   if (!isHydrated) {
     return (
@@ -150,7 +174,7 @@ const AppSidebar: React.FC = () => {
 
   return (
     <aside
-      className={`fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
+      className={`fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200
         ${isExpanded || isMobileOpen ? "w-[280px]" : isHovered ? "w-[280px]" : "w-[90px]"}
         ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
         lg:translate-x-0`}
@@ -160,15 +184,15 @@ const AppSidebar: React.FC = () => {
       {/* Logo */}
       <div className="py-8 flex justify-center">
         {isExpanded || isHovered || isMobileOpen ? (
-          <img 
-            src="/images/ciyex-connect-logo.png" 
-            alt="Ciyex Connect" 
+          <img
+            src="/images/ciyex-connect-logo.png"
+            alt="Ciyex Connect"
             className="h-16 w-auto"
           />
         ) : (
-          <img 
-            src="/images/ciyex-connect.png" 
-            alt="Ciyex Connect" 
+          <img
+            src="/images/ciyex-connect.png"
+            alt="Ciyex Connect"
             className="h-12 w-12"
           />
         )}
@@ -178,7 +202,7 @@ const AppSidebar: React.FC = () => {
       <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar py-6">
         <ul className="flex flex-col gap-2">
           {navItems.map((nav) => (
-            <li key={nav.name}>
+            <li key={nav.path}>
               <Link
                 href={nav.path}
                 className={`menu-item group ${isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"}`}

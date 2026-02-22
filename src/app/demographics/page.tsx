@@ -425,7 +425,7 @@ export default function DemographicsPage() {
             ))}
 
             {/* Read-only metadata */}
-            {(formData.id || formData.fhirId) && (
+            {Boolean(formData.id || formData.fhirId) && (
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
                 <h2 className="text-sm font-semibold text-gray-900 mb-4">Medical Records</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

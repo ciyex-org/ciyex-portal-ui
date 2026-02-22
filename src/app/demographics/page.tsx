@@ -435,7 +435,7 @@ export default function DemographicsPage() {
                       {String(formData.fhirId || formData.id || "—")}
                     </div>
                   </div>
-                  {formData.mrn && (
+                  {Boolean(formData.mrn) && (
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1">Medical Record Number</label>
                       <div className="px-3 py-2 text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-100">

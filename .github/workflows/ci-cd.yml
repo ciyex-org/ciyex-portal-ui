@@ -25,7 +25,7 @@ on:
       runner:
         description: 'Runner label to use for workflow_dispatch (e.g. self-hosted or ubuntu-latest)'
         type: string
-        default: 'ubuntu-latest'
+        default: 'self-hosted'
 
 concurrency:
   group: portal-ui-version-management
@@ -44,7 +44,7 @@ jobs:
   promote-rc:
     name: Promote to Release Candidate
     if: (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Promote to RC') || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-rc'))
-    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'ubuntu-latest' }}
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'self-hosted' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -117,7 +117,7 @@ jobs:
   promote-ga:
     name: Promote to General Availability
     if: (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Promote to GA') || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-alpha') && !contains(github.ref, '-rc'))
-    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'ubuntu-latest' }}
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'self-hosted' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -173,7 +173,7 @@ jobs:
   skip-rc:
     name: Skip Release Candidate
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Skip RC'
-    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'ubuntu-latest' }}
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'self-hosted' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -226,7 +226,7 @@ jobs:
   deploy-argocd:
     name: Deploy ArgoCD Applications
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Deploy ArgoCD Apps'
-    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'ubuntu-latest' }}
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'self-hosted' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -267,7 +267,7 @@ jobs:
   version:
     name: Determine Version
     if: github.event_name != 'workflow_dispatch' || github.event.inputs.action == 'Build'
-    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'ubuntu-latest' }}
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'self-hosted' }}
     outputs:
       version: ${{ steps.version.outputs.version }}
       environment: ${{ steps.version.outputs.environment }}
@@ -338,7 +338,7 @@ jobs:
   pr-build:
     name: PR Build
     if: github.event_name == 'pull_request'
-    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'ubuntu-latest' }}
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'self-hosted' }}
     needs: [version]
     steps:
       - name: Checkout
@@ -372,7 +372,7 @@ jobs:
   build-deploy:
     name: Build & Deploy (${{ needs.version.outputs.environment }})
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Build')
-    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'ubuntu-latest' }}
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'self-hosted' }}
     needs: [version]
     environment:
       name: ${{ needs.version.outputs.environment }}
@@ -478,7 +478,7 @@ jobs:
   notify:
     name: Notify
     if: always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'ubuntu-latest' }}
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'self-hosted' }}
     needs: [version, build-deploy, promote-rc, promote-ga]
     steps:
       - name: Checkout

@@ -12,6 +12,7 @@ export interface PortalNavItem {
     key: string;
     label: string;
     icon: string;
+    path: string;
     visible: boolean;
     position: number;
 }

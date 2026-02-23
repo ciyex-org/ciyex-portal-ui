@@ -58,7 +58,9 @@ export function usePortalConfig() {
             try {
                 const res = await fetchWithAuth("/api/portal/config");
                 if (res.ok) {
-                    const data = await res.json();
+                    const json = await res.json();
+                    // Backend wraps in ApiResponse { success, data, message }
+                    const data = json.data || json;
                     cachedConfig = data;
                     setConfig(data);
                 }

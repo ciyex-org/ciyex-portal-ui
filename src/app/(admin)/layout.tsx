@@ -5,6 +5,7 @@ import AppHeader from "@/layout/AppHeader";
 import AppSidebar from "@/layout/AppSidebar";
 import Backdrop from "@/layout/Backdrop";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import SessionManager from "@/layout/SessionManager";
 import React from "react";
 
 export default function AdminLayout({
@@ -23,6 +24,7 @@ export default function AdminLayout({
 
   return (
     <ProtectedRoute>
+      <SessionManager />
       <div className="min-h-screen flex w-full">
         {/* Sidebar and Backdrop */}
         <AppSidebar />

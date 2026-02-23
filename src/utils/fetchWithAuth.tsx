@@ -1,10 +1,11 @@
 import { getEnv } from "@/utils/env";
+import { refreshAccessToken, clearAuth } from "@/utils/authUtils";
+
 export async function fetchWithAuth(
   input: RequestInfo,
   init: RequestInit = {}
 ): Promise<Response> {
   let token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
-  // authMethod intentionally not used here; backend decides tenancy from token
 
   // 🕒 Wait for token to appear (after login redirect)
   let attempts = 0;
@@ -19,20 +20,6 @@ export async function fetchWithAuth(
       window.location.href = "/signin";
     }
     throw new Error("Auth token missing");
-  }
-
-  // We no longer rely on an explicit orgId header. Backend should accept
-  // token-only authentication (Keycloak or local) and derive any tenancy
-  // from the token/portal-user mapping server-side. Do not persist orgId
-  // on the client anymore.
-
-  // Debug logging (only in development)
-  if (process.env.NODE_ENV === 'development') {
-    console.debug('🔍 fetchWithAuth debug:', {
-      hasToken: !!token,
-      tokenLength: token?.length,
-      url: typeof input === "string" ? input : input.url
-    });
   }
 
   const orgAlias = getEnv("NEXT_PUBLIC_ORG_ALIAS");
@@ -64,28 +51,41 @@ export async function fetchWithAuth(
 
   const response = await fetch(url, { ...init, headers: mergedHeaders, credentials: 'include' });
 
-  // ✅ Don't redirect on 401 - let the page handle errors gracefully
   if (response.status === 401) {
-    console.warn("⚠️ Unauthorized (token expired or insufficient permissions)");
-    // Check if token is expired
+    // Try to refresh the token before giving up
     try {
-      const { isTokenExpired } = await import('./jwtHelper');
-      if (isTokenExpired()) {
-        console.warn("🔄 Token expired, redirecting to login");
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("token");
-          window.location.href = "/signin";
+      const refreshed = await refreshAccessToken();
+
+      if (refreshed) {
+        // Retry the original request with the new token
+        const newToken = localStorage.getItem("token");
+        const retryHeaders = new Headers(init.headers || {});
+        Object.entries({
+          "Accept": "application/json",
+          ...(newToken ? { Authorization: `Bearer ${newToken}` } : {}),
+          ...(orgAlias ? { "X-Org-Alias": orgAlias } : {}),
+        }).forEach(([k, v]) => retryHeaders.set(k, v));
+
+        if (isFormData) {
+          retryHeaders.delete("Content-Type");
+        } else if (!retryHeaders.has("Content-Type")) {
+          retryHeaders.set("Content-Type", "application/json");
         }
-        throw new Error("Token expired");
+
+        const retryRes = await fetch(url, { ...init, headers: retryHeaders, credentials: 'include' });
+        if (retryRes.status !== 401) {
+          return retryRes;
+        }
       }
-    } catch (e) {
-      console.warn("Could not check token expiration:", e);
-      // If we can't check expiration, still redirect on 401
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("token");
-        window.location.href = "/signin";
-      }
-      throw new Error("Authentication failed");
+    } catch {
+      // refresh threw — fall through to sign-out
+    }
+
+    // Refresh failed or retry still got 401 — redirect to sign-in
+    console.warn("⚠️ 401 Unauthorized - Session expired, redirecting to sign-in:", input);
+    if (typeof window !== "undefined") {
+      clearAuth();
+      window.location.href = "/signin";
     }
   }
 

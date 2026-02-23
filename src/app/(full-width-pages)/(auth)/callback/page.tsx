@@ -53,6 +53,7 @@ function AuthCallbackContent() {
                     
                     const {
                         token,
+                        refreshToken,
                         email,
                         username,
                         firstName,
@@ -69,6 +70,7 @@ function AuthCallbackContent() {
                     // Persist token and user info; backend should handle any
                     // tenant/org resolution. Keep groups for client-side UI.
                     localStorage.setItem("token", token);
+                    if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
                     localStorage.setItem("authMethod", "keycloak");
                     localStorage.setItem("userEmail", email || username || "");
                     localStorage.setItem("userFullName", fullName);

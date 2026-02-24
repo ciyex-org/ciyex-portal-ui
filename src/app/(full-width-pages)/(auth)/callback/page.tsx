@@ -30,7 +30,7 @@ function AuthCallbackContent() {
                 const codeVerifier = sessionStorage.getItem('pkce_code_verifier');
                 
                 // Exchange code for token with backend
-                const response = await fetch(`${apiUrl}/api/auth/keycloak-callback`, {
+                const response = await fetch(`${apiUrl}/api/portal/auth/keycloak-callback`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",

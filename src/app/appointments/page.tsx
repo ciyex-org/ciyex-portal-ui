@@ -79,7 +79,7 @@ export default function AppointmentsPage() {
                     fetchWithAuth("/api/portal/locations"),
                 ]);
                 const [appts, provs, locs] = await Promise.all([safeJson(apptRes), safeJson(provRes), safeJson(locRes)]);
-                setAppointments(appts.data || []);
+                setAppointments(Array.isArray(appts.data) ? appts.data : (appts.data?.content || []));
                 setProviders(provs.data || []);
                 setLocations(locs.data || []);
 

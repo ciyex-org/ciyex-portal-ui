@@ -48,7 +48,15 @@ export function useMedications() {
             return null;
           };
 
-          const mapped = data.data.map((item: any) => ({
+          // data.data may be a paginated wrapper { content: [...], ... } or a plain array
+          const rawData = data.data;
+          const itemList: any[] = Array.isArray(rawData)
+            ? rawData
+            : Array.isArray(rawData?.content)
+            ? rawData.content
+            : [];
+
+          const mapped = itemList.map((item: any) => ({
             id: item.id,
             patientId: item.patientId,
             encounterId: item.encounterId ?? null,

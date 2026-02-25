@@ -13,12 +13,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const hdrs: Record<string, string> = { 'Content-Type': 'application/json', 'Authorization': authHeader };
+    const orgAlias = request.headers.get('x-org-alias');
+    if (orgAlias) hdrs['X-Org-Alias'] = orgAlias;
+    const tenantName = request.headers.get('x-tenant-name');
+    if (tenantName) hdrs['X-Tenant-Name'] = tenantName;
+
     const response = await fetch(`${BACKEND_URL}/api/portal/vitals/my`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader,
-      },
+      headers: hdrs,
     });
 
     const data = await response.json();

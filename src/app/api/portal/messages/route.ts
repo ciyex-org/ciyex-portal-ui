@@ -1,65 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Mock data for development - replace with actual backend calls
-const mockMessages = [
-  {
-    id: 1,
-    threadId: 1,
-    subject: "Follow-up on your recent appointment",
-    body: "Hello John, I wanted to follow up on your recent appointment. How are you feeling?",
-    from: "Dr. Sarah Johnson",
-    to: "You",
-    date: "2025-10-15T10:30:00Z",
-    isRead: false,
-    category: "appointment",
-    priority: "normal",
-    attachments: [],
-    providerName: "Dr. Sarah Johnson",
-    providerSpecialty: "Family Medicine",
-    providerId: 1
-  },
-  {
-    id: 2,
-    threadId: 1,
-    subject: "Follow-up on your recent appointment",
-    body: "Thank you for asking, Doctor. I'm feeling much better now.",
-    from: "You",
-    to: "Dr. Sarah Johnson",
-    date: "2025-10-15T11:00:00Z",
-    isRead: true,
-    category: "appointment",
-    priority: "normal",
-    attachments: [],
-    providerName: "Dr. Sarah Johnson",
-    providerSpecialty: "Family Medicine",
-    providerId: 1
-  },
-  {
-    id: 3,
-    threadId: 2,
-    subject: "Prescription refill request",
-    body: "Your prescription for Lisinopril is ready for refill. Please let us know if you'd like to pick it up or have it delivered.",
-    from: "Ciyex Pharmacy",
-    to: "You",
-    date: "2025-10-14T14:20:00Z",
-    isRead: false,
-    category: "prescription",
-    priority: "normal",
-    attachments: [],
-    providerName: "Ciyex Pharmacy",
-    providerSpecialty: "Pharmacy",
-    providerId: 2
-  }
-];
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // For development, return mock data
-    // In production, this would proxy to the backend
-    return NextResponse.json({
-      success: true,
-      messages: mockMessages
+    const authHeader = request.headers.get('authorization');
+
+    if (!authHeader) {
+      return NextResponse.json(
+        { success: false, message: 'Authorization header required' },
+        { status: 401 }
+      );
+    }
+
+    const response = await fetch(`${BACKEND_URL}/api/portal/communications/my`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader,
+      },
     });
+
+    const data = await response.json();
+    return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error('Portal messages GET error:', error);
     return NextResponse.json(

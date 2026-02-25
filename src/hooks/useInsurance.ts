@@ -87,7 +87,14 @@ export function useInsurance() {
         console.debug("[useInsurance] raw API response:", data);
 
         if (data.success && data.data) {
-          setCoverages(data.data);
+          // data.data may be a paginated wrapper { content: [...], ... } or a plain array
+          const raw = data.data;
+          const coverageList = Array.isArray(raw)
+            ? raw
+            : Array.isArray(raw?.content)
+            ? raw.content
+            : [];
+          setCoverages(coverageList);
         } else {
           setCoverages([]);
           if (data.message) setError(data.message);

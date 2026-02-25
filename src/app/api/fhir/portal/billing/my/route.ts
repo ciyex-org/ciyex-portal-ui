@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const tenantName = request.headers.get('x-tenant-name');
     if (tenantName) hdrs['X-Tenant-Name'] = tenantName;
 
-    const response = await fetch(`${BACKEND_URL}/api/fhir/medications/my`, {
+    const response = await fetch(`${BACKEND_URL}/api/fhir/portal/billing/my`, {
       method: 'GET',
       headers: hdrs,
     });
@@ -38,9 +38,9 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error('FHIR medications proxy error:', error);
+    console.error('Portal billing proxy error:', error);
     return NextResponse.json(
-      { success: false, message: 'Medications service unavailable' },
+      { success: false, message: 'Billing service unavailable' },
       { status: 500 }
     );
   }

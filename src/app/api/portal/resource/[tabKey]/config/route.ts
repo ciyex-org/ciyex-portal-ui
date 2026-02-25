@@ -10,9 +10,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ success: false, message: 'Authorization header missing' }, { status: 401 });
     }
 
+    const proxyHeaders: Record<string, string> = {
+      'Authorization': authHeader,
+      'Content-Type': 'application/json',
+    };
+    const orgAlias = request.headers.get('x-org-alias');
+    if (orgAlias) proxyHeaders['X-Org-Alias'] = orgAlias;
+    const tenantName = request.headers.get('x-tenant-name');
+    if (tenantName) proxyHeaders['X-Tenant-Name'] = tenantName;
+
     const response = await fetch(`${BACKEND_URL}/api/portal/resource/${tabKey}/config`, {
       method: 'GET',
-      headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' },
+      headers: proxyHeaders,
     });
 
     const data = await response.json();

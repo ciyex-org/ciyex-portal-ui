@@ -13,12 +13,15 @@ export async function GET(request: NextRequest) {
       );
     }
     
+    const hdrs: Record<string, string> = { 'Content-Type': 'application/json', 'Authorization': authHeader };
+    const orgAlias = request.headers.get('x-org-alias');
+    if (orgAlias) hdrs['X-Org-Alias'] = orgAlias;
+    const tenantName = request.headers.get('x-tenant-name');
+    if (tenantName) hdrs['X-Tenant-Name'] = tenantName;
+
     const response = await fetch(`${BACKEND_URL}/api/portal/patient/me`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader,
-      },
+      headers: hdrs,
     });
 
     const data = await response.json();
@@ -52,12 +55,15 @@ export async function PUT(request: NextRequest) {
       );
     }
     
+    const putHdrs: Record<string, string> = { 'Content-Type': 'application/json', 'Authorization': authHeader };
+    const putOrgAlias = request.headers.get('x-org-alias');
+    if (putOrgAlias) putHdrs['X-Org-Alias'] = putOrgAlias;
+    const putTenantName = request.headers.get('x-tenant-name');
+    if (putTenantName) putHdrs['X-Tenant-Name'] = putTenantName;
+
     const response = await fetch(`${BACKEND_URL}/api/portal/patient/me`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader,
-      },
+      headers: putHdrs,
       body: JSON.stringify(body),
     });
 

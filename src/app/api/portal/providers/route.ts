@@ -12,12 +12,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const hdrs: Record<string, string> = { 'Authorization': authHeader, 'Content-Type': 'application/json' };
+    const orgAlias = request.headers.get('x-org-alias');
+    if (orgAlias) hdrs['X-Org-Alias'] = orgAlias;
+    const tenantName = request.headers.get('x-tenant-name');
+    if (tenantName) hdrs['X-Tenant-Name'] = tenantName;
+
     const response = await fetch(`${BACKEND_URL}/api/portal/providers`, {
       method: 'GET',
-      headers: {
-        'Authorization': authHeader,
-        'Content-Type': 'application/json',
-      },
+      headers: hdrs,
     });
 
     const data = await response.json();

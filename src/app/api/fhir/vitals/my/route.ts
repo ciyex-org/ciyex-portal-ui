@@ -22,25 +22,18 @@ export async function GET(request: NextRequest) {
     const tenantName = request.headers.get('x-tenant-name');
     if (tenantName) hdrs['X-Tenant-Name'] = tenantName;
 
-    const response = await fetch(`${BACKEND_URL}/api/fhir/medications/my`, {
+    const response = await fetch(`${BACKEND_URL}/api/fhir/vitals/my`, {
       method: 'GET',
       headers: hdrs,
     });
 
     const data = await response.json();
 
-    return NextResponse.json(data, {
-      status: response.status,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      }
-    });
+    return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    console.error('FHIR medications proxy error:', error);
+    console.error('FHIR vitals proxy error:', error);
     return NextResponse.json(
-      { success: false, message: 'Medications service unavailable' },
+      { success: false, message: 'Vitals service unavailable' },
       { status: 500 }
     );
   }

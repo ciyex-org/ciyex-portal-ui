@@ -49,7 +49,14 @@ export function useBilling() {
         const res = await fetchWithAuth("/api/fhir/portal/billing/my");
         if (res.ok) {
           const data = await res.json();
-          setInvoices(data.data || []);
+          // data.data may be a paginated wrapper { content: [...], ... } or a plain array
+          const raw = data.data;
+          const invoiceList = Array.isArray(raw)
+            ? raw
+            : Array.isArray(raw?.content)
+            ? raw.content
+            : [];
+          setInvoices(invoiceList);
         } else if (res.status === 403) {
           // Forbidden - set empty list and suppress error for UI continuity
           setInvoices([]);

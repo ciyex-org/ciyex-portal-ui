@@ -12,8 +12,8 @@ type Medication = {
   prescribingDoctor?: string;
   status: string;
   audit?: {
-    createdDate: string;
-    lastModifiedDate: string;
+    createdDate: string | null;
+    lastModifiedDate: string | null;
   };
 };
 

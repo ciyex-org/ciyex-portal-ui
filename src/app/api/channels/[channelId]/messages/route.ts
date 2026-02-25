@@ -4,9 +4,10 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { channelId: string } }
+  { params }: { params: Promise<{ channelId: string }> }
 ) {
   try {
+    const { channelId } = await params;
     const auth = request.headers.get('authorization');
     if (!auth) {
       return NextResponse.json({ success: false, message: 'Authorization required' }, { status: 401 });
@@ -14,7 +15,7 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const limit = searchParams.get('limit') || '100';
     const response = await fetch(
-      `${BACKEND_URL}/api/channels/${params.channelId}/messages?limit=${limit}`,
+      `${BACKEND_URL}/api/channels/${channelId}/messages?limit=${limit}`,
       {
         method: 'GET',
         headers: {
@@ -33,16 +34,17 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { channelId: string } }
+  { params }: { params: Promise<{ channelId: string }> }
 ) {
   try {
+    const { channelId } = await params;
     const auth = request.headers.get('authorization');
     if (!auth) {
       return NextResponse.json({ success: false, message: 'Authorization required' }, { status: 401 });
     }
     const body = await request.json();
     const response = await fetch(
-      `${BACKEND_URL}/api/channels/${params.channelId}/messages`,
+      `${BACKEND_URL}/api/channels/${channelId}/messages`,
       {
         method: 'POST',
         headers: {

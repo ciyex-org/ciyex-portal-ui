@@ -7,8 +7,10 @@ import { signIn } from "next-auth/react";
 import ReCAPTCHA from "react-google-recaptcha";
 
 interface Org {
-  id: number;
+  id?: number;
+  orgAlias: string;
   orgName: string;
+  address?: string;
 }
 
 interface PortalApiResponse<T> {
@@ -48,7 +50,7 @@ export default function SignUpPage() {
     postalCode: "",
     securityQuestion: "",
     securityAnswer: "",
-    orgId: "",
+    orgAlias: "",
   });
 
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
@@ -117,7 +119,7 @@ export default function SignUpPage() {
       e.preventDefault();
       const selected = orgResults[highlightIndex];
       if (selected) {
-        setForm({ ...form, orgId: selected.id.toString() });
+        setForm({ ...form, orgAlias: selected.orgAlias });
         setOrgSearch(selected.orgName);
         setOrgResults([]);
       }
@@ -132,7 +134,7 @@ export default function SignUpPage() {
       setError("Please verify the captcha.");
       return;
     }
-    if (!form.orgId) {
+    if (!form.orgAlias) {
       setError("Please select an organization.");
       return;
     }
@@ -157,7 +159,7 @@ export default function SignUpPage() {
           firstName: "", middleName: "", lastName: "", email: "", password: "",
           dateOfBirth: "", gender: "", phoneNumber: "", street: "", city: "",
           state: "", country: "", postalCode: "", securityQuestion: "",
-          securityAnswer: "", orgId: ""
+          securityAnswer: "", orgAlias: ""
         });
         setOrgSearch("");
         setCaptchaToken(null);
@@ -200,7 +202,7 @@ export default function SignUpPage() {
             lastName: session.user.name?.split(" ")[1] || "",
             email: session.user.email,
             password: crypto.randomUUID(),
-            orgId: form.orgId || 1, // fallback if none chosen
+            orgAlias: form.orgAlias || "", // org from dropdown
             role: "PATIENT",
           }),
         }
@@ -318,9 +320,9 @@ export default function SignUpPage() {
               <div className="col-span-2 border rounded bg-white shadow max-h-32 overflow-y-auto">
                 {orgResults.map((org, idx) => (
                   <div
-                    key={org.id}
+                    key={org.orgAlias}
                     onClick={() => {
-                      setForm({ ...form, orgId: org.id.toString() });
+                      setForm({ ...form, orgAlias: org.orgAlias });
                       setOrgSearch(org.orgName);
                       setOrgResults([]);
                     }}

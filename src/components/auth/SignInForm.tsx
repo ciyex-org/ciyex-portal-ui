@@ -54,7 +54,8 @@ export default function SignInForm() {
         userId: string;
         patientFhirId?: string;
     }) => {
-        // Check patient FHIR link
+        // Check patient FHIR link — Keycloak patients need patientFhirId
+        // Portal-registered patients already have fhirId passed as patientFhirId
         const rolesUpper = Array.isArray(data.groups)
             ? data.groups.map((g: string) => g?.toUpperCase())
             : [];
@@ -74,13 +75,16 @@ export default function SignInForm() {
         localStorage.setItem("userFullName", fullName);
         localStorage.setItem("userId", String(data.userId || ""));
         localStorage.setItem("groups", JSON.stringify(data.groups || []));
-        localStorage.setItem("authMethod", "keycloak");
+        localStorage.setItem("authMethod", data.patientFhirId ? "portal" : "keycloak");
         localStorage.setItem("user", JSON.stringify(data));
         if (data.patientFhirId) localStorage.setItem("patientFhirId", data.patientFhirId);
 
         if (data.groups && data.groups.length > 0) {
             localStorage.setItem("primaryGroup", data.groups[0]);
         }
+
+        // Notify contexts that token is available
+        window.dispatchEvent(new CustomEvent("auth-token-set", { detail: { key: "token" } }));
 
         router.replace("/dashboard");
     }, [router]);
@@ -109,9 +113,9 @@ export default function SignInForm() {
             setDiscoverResult(data);
 
             if (!data.exists) {
-                setError("No account found with this email. Would you like to create one?");
-                setLoading(false);
-                return;
+                // User not in Keycloak — may still be a portal-registered user (FHIR Person)
+                // Proceed to password step with password-only auth
+                setDiscoverResult({ ...data, exists: true, authMethods: ["password"], idps: [] });
             }
 
             setStep("authenticate");
@@ -130,6 +134,7 @@ export default function SignInForm() {
         setError("");
 
         try {
+            // Try Keycloak auth first (provider-created patients)
             const res = await fetch(`${apiUrl}/api/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -140,10 +145,36 @@ export default function SignInForm() {
 
             if (data.success && data.data?.token) {
                 await handlePostLogin(data.data);
-            } else {
-                setError(data.error || "Invalid email or password");
-                setLoading(false);
+                return;
             }
+
+            // Fallback: try portal auth (self-registered patients via FHIR Person)
+            const portalRes = await fetch(`${apiUrl}/api/portal/auth/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: email.trim(), password }),
+            });
+
+            const portalData = await portalRes.json();
+
+            if (portalData.success && portalData.data?.token) {
+                // Portal auth returns slightly different shape — normalize for handlePostLogin
+                const pd = portalData.data;
+                await handlePostLogin({
+                    token: pd.token,
+                    email: pd.email || email.trim(),
+                    username: pd.email || email.trim(),
+                    firstName: pd.firstName || "",
+                    lastName: pd.lastName || "",
+                    groups: ["PATIENT"],
+                    userId: pd.fhirId || String(pd.id || ""),
+                    patientFhirId: pd.fhirId || undefined,
+                });
+                return;
+            }
+
+            setError(portalData.message || data.error || "Invalid email or password");
+            setLoading(false);
         } catch {
             setError("Unable to connect. Please try again.");
             setLoading(false);

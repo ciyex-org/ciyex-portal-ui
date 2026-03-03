@@ -128,7 +128,7 @@ export default function SignUpPage() {
   const handleSignUp = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!captchaToken) {
+    if (getEnv("NEXT_PUBLIC_RECAPTCHA_SITE_KEY") && !captchaToken) {
       setError("Please verify the captcha.");
       return;
     }
@@ -335,9 +335,11 @@ export default function SignUpPage() {
             )}
 
             {/* Captcha */}
-            <div className="flex justify-center col-span-2 my-2">
-              <ReCAPTCHA sitekey={getEnv("NEXT_PUBLIC_RECAPTCHA_SITE_KEY") as string} onChange={handleCaptcha} />
-            </div>
+            {getEnv("NEXT_PUBLIC_RECAPTCHA_SITE_KEY") && (
+              <div className="flex justify-center col-span-2 my-2">
+                <ReCAPTCHA sitekey={getEnv("NEXT_PUBLIC_RECAPTCHA_SITE_KEY") as string} onChange={handleCaptcha} />
+              </div>
+            )}
 
             <button type="submit" disabled={loading} className="bg-blue-600 text-white py-2 rounded hover:bg-blue-700 col-span-2">
               {loading ? "Signing up..." : "Sign Up"}

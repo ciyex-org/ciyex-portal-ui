@@ -1,225 +1,225 @@
 "use client";
 import { getEnv } from "@/utils/env";
-import Button from "@/components/ui/button/Button";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
 
-interface PortalLoginResponse {
-  token: string;
-  userId: number;
-  uuid: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  phone?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  orgs: Array<{
-    orgId: number;
-    orgName: string;
-    role: string;
-  }>;
-}
+type Step = "email" | "authenticate";
 
-interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data?: T;
+interface DiscoverResult {
+    exists: boolean;
+    authMethods: string[];
+    idps: Array<{ alias: string; displayName: string; providerId: string }>;
+    orgAlias: string;
+    orgName: string;
 }
 
 export default function SignInForm() {
     const router = useRouter();
-    const [loading, setLoading] = useState(false);
-    const [localLoading, setLocalLoading] = useState(false);
-    const [form, setForm] = useState({ email: "", password: "" });
+    const [step, setStep] = useState<Step>("email");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [discoverResult, setDiscoverResult] = useState<DiscoverResult | null>(null);
 
-    const keycloakEnabled = getEnv("NEXT_PUBLIC_KEYCLOAK_ENABLED") === 'true';
+    const apiUrl = getEnv("NEXT_PUBLIC_API_URL") || "";
     const keycloakUrl = getEnv("NEXT_PUBLIC_KEYCLOAK_URL");
     const keycloakRealm = getEnv("NEXT_PUBLIC_KEYCLOAK_REALM");
     const keycloakClientId = getEnv("NEXT_PUBLIC_KEYCLOAK_CLIENT_ID");
-    const API_BASE = getEnv("NEXT_PUBLIC_API_URL") ?? "http://localhost:8080";
 
     useEffect(() => {
         const token = localStorage.getItem("token");
-        const authMethod = localStorage.getItem("authMethod");
-        
-        if (token && authMethod) {
+        if (token) {
             try {
                 const decoded: { exp: number } = jwtDecode(token);
                 if (decoded.exp * 1000 > Date.now()) {
-                    console.log("🔄 Valid token found, redirecting to dashboard");
                     router.push("/dashboard");
-                } else {
-                    console.log("⏰ Token expired, clearing auth data");
-                    // Clear expired token
-                    localStorage.removeItem("token");
-                    localStorage.removeItem("authMethod");
-                    localStorage.removeItem("userEmail");
-                    localStorage.removeItem("userFullName");
-                    localStorage.removeItem("userId");
-                    localStorage.removeItem("groups");
-                    localStorage.removeItem("primaryGroup");
-                    localStorage.removeItem("user");
-                    localStorage.removeItem("orgId");
-                    localStorage.removeItem("orgs");
                 }
-            } catch (error) {
-                console.log("❌ Invalid token, clearing auth data:", error);
-                // Invalid token, clear auth data
-                localStorage.removeItem("token");
-                localStorage.removeItem("authMethod");
-                localStorage.removeItem("userEmail");
-                localStorage.removeItem("userFullName");
-                localStorage.removeItem("userId");
-                localStorage.removeItem("groups");
-                localStorage.removeItem("primaryGroup");
-                localStorage.removeItem("user");
-                localStorage.removeItem("orgId");
-                localStorage.removeItem("orgs");
+            } catch {
+                // Invalid token, proceed to login
             }
         }
     }, [router]);
 
-    const generateCodeVerifier = () => {
-        const array = new Uint8Array(32);
-        crypto.getRandomValues(array);
-        return btoa(String.fromCharCode(...array))
-            .replace(/\+/g, '-')
-            .replace(/\//g, '_')
-            .replace(/=/g, '');
-    };
+    const handlePostLogin = useCallback(async (data: {
+        token: string;
+        refreshToken?: string;
+        email: string;
+        username: string;
+        firstName: string;
+        lastName: string;
+        groups: string[];
+        userId: string;
+        patientFhirId?: string;
+    }) => {
+        // Check patient FHIR link
+        const rolesUpper = Array.isArray(data.groups)
+            ? data.groups.map((g: string) => g?.toUpperCase())
+            : [];
+        const isPatient = rolesUpper.includes("PATIENT");
 
-    const generateCodeChallenge = async (verifier: string) => {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(verifier);
-        const hash = await crypto.subtle.digest('SHA-256', data);
-        return btoa(String.fromCharCode(...new Uint8Array(hash)))
-            .replace(/\+/g, '-')
-            .replace(/\//g, '_')
-            .replace(/=/g, '');
-    };
-
-    const handleKeycloakSignIn = async () => {
-        if (!keycloakEnabled || !keycloakUrl || !keycloakRealm || !keycloakClientId) {
-            console.error("Keycloak is not properly configured");
+        if (isPatient && !data.patientFhirId) {
+            setError("Your account is not linked to a patient record. Please contact your healthcare provider.");
+            setLoading(false);
             return;
         }
 
+        const fullName = `${data.firstName || ""} ${data.lastName || ""}`.trim() || data.username || "";
+
+        localStorage.setItem("token", data.token);
+        if (data.refreshToken) localStorage.setItem("refreshToken", data.refreshToken);
+        localStorage.setItem("userEmail", data.email || data.username || "");
+        localStorage.setItem("userFullName", fullName);
+        localStorage.setItem("userId", String(data.userId || ""));
+        localStorage.setItem("groups", JSON.stringify(data.groups || []));
+        localStorage.setItem("authMethod", "keycloak");
+        localStorage.setItem("user", JSON.stringify(data));
+        if (data.patientFhirId) localStorage.setItem("patientFhirId", data.patientFhirId);
+
+        if (data.groups && data.groups.length > 0) {
+            localStorage.setItem("primaryGroup", data.groups[0]);
+        }
+
+        router.replace("/dashboard");
+    }, [router]);
+
+    const handleDiscover = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!email.trim()) return;
+
         setLoading(true);
+        setError("");
 
         try {
-            const codeVerifier = generateCodeVerifier();
-            const codeChallenge = await generateCodeChallenge(codeVerifier);
-            sessionStorage.setItem('pkce_code_verifier', codeVerifier);
-
-            const redirectUri = window.location.origin + "/callback";
-            const authUrl = `${keycloakUrl}/realms/${keycloakRealm}/protocol/openid-connect/auth`;
-            
-            const params = new URLSearchParams({
-                client_id: keycloakClientId,
-                redirect_uri: redirectUri,
-                response_type: "code",
-                scope: "openid profile email",
-                code_challenge: codeChallenge,
-                code_challenge_method: "S256",
+            const res = await fetch(`${apiUrl}/api/auth/discover`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: email.trim() }),
             });
 
-            window.location.href = `${authUrl}?${params.toString()}`;
-        } catch (error) {
-            console.error("Error during Keycloak sign-in:", error);
+            if (!res.ok) {
+                setError("Unable to verify your account. Please try again.");
+                setLoading(false);
+                return;
+            }
+
+            const data: DiscoverResult = await res.json();
+            setDiscoverResult(data);
+
+            if (!data.exists) {
+                setError("No account found with this email. Would you like to create one?");
+                setLoading(false);
+                return;
+            }
+
+            setStep("authenticate");
+            setLoading(false);
+        } catch {
+            setError("Unable to connect to the server. Please try again.");
             setLoading(false);
         }
     };
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-        setForm({ ...form, [e.target.name]: e.target.value });
-
-    const handleLocalSignIn = async (e: React.FormEvent) => {
+    const handlePasswordLogin = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!email.trim() || !password) return;
+
+        setLoading(true);
         setError("");
-        setLocalLoading(true);
 
         try {
-            // Clear any old tokens
-            localStorage.removeItem("token");
-            localStorage.removeItem("user");
-
-            const payload = {
-                email: form.email.trim(),
-                password: form.password,
-            };
-
-            console.log("🔑 Sending login payload:", payload);
-
-            const res = await fetch(`${API_BASE}/api/portal/auth/login`, {
+            const res = await fetch(`${apiUrl}/api/auth/login`, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Accept: "application/json",
-                },
-                body: JSON.stringify(payload),
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: email.trim(), password }),
             });
 
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || `Login failed with ${res.status}`);
-            }
+            const data = await res.json();
 
-            const data: ApiResponse<PortalLoginResponse> = await res.json();
-
-            if (!data.success || !data.data) {
-                throw new Error(data.message || "Login failed.");
-            }
-
-            const user = data.data;
-            console.log("✅ Login success, user:", user);
-
-            // Save token + user for later API calls
-            // Persist token and basic user info. Do not persist org-level data
-            // on the client; backend should derive tenancy from token or portal
-            // user mapping.
-            localStorage.setItem("token", user.token);
-            localStorage.setItem("authMethod", "local");
-            localStorage.setItem("user", JSON.stringify(user));
-            localStorage.setItem("userEmail", user.email);
-            localStorage.setItem("userFullName", `${user.firstName} ${user.lastName}`.trim());
-            localStorage.setItem("portalUserId", user.userId.toString());
-
-            // Redirect after login
-            router.replace("/dashboard");
-        } catch (err: unknown) {
-            console.error("Sign in error:", err);
-            if (err instanceof Error) {
-                setError(err.message);
+            if (data.success && data.data?.token) {
+                await handlePostLogin(data.data);
             } else {
-                setError("Login failed.");
+                setError(data.error || "Invalid email or password");
+                setLoading(false);
             }
-        } finally {
-            setLocalLoading(false);
+        } catch {
+            setError("Unable to connect. Please try again.");
+            setLoading(false);
         }
+    };
+
+    const handleIdpLogin = async (idpAlias: string) => {
+        if (!keycloakUrl || !keycloakRealm || !keycloakClientId) return;
+
+        setLoading(true);
+        try {
+            const array = new Uint8Array(32);
+            crypto.getRandomValues(array);
+            const codeVerifier = btoa(String.fromCharCode(...array))
+                .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+
+            const encoder = new TextEncoder();
+            const hash = await crypto.subtle.digest("SHA-256", encoder.encode(codeVerifier));
+            const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
+                .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+
+            sessionStorage.setItem("pkce_code_verifier", codeVerifier);
+
+            const redirectUri = window.location.origin + "/callback";
+            const authUrl = `${keycloakUrl}/realms/${keycloakRealm}/protocol/openid-connect/auth`;
+            const params = new URLSearchParams({
+                client_id: keycloakClientId,
+                redirect_uri: redirectUri,
+                response_type: "code",
+                scope: "openid profile email organization",
+                code_challenge: codeChallenge,
+                code_challenge_method: "S256",
+                kc_idp_hint: idpAlias,
+                login_hint: email,
+            });
+
+            window.location.href = `${authUrl}?${params.toString()}`;
+        } catch {
+            setError("Failed to initiate sign-in. Please try again.");
+            setLoading(false);
+        }
+    };
+
+    const handleBack = () => {
+        setStep("email");
+        setPassword("");
+        setError("");
+        setDiscoverResult(null);
     };
 
     return (
         <div className="min-h-screen w-full grid grid-cols-1 lg:grid-cols-2 dark:bg-gray-900">
             {/* Left Column: Branding */}
-            <div className="hidden lg:flex flex-col items-center justify-center bg-linear-to-br from-purple-900 via-blue-700 to-cyan-500 p-12 text-white relative overflow-hidden">
-                <div className="absolute inset-0 bg-black opacity-20"></div>
-                <div className="z-10 flex flex-col items-center">
-                    <div className="mb-8">
-                        <svg className="w-24 h-24" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                        </svg>
-                    </div>
-                    <h1 className="text-5xl font-bold mb-4 text-center tracking-tight">
-                        Ciyex Portal
-                    </h1>
-                    <p className="text-lg text-blue-100 max-w-md text-center font-light">
-                        Your Health. Your Control. Access your medical records, appointments, and more.
+            <div className="hidden lg:flex flex-col items-center justify-center p-12 text-white relative overflow-hidden" style={{ background: "linear-gradient(135deg, #7c3aed 0%, #3b82f6 50%, #06b6d4 100%)" }}>
+                <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: "radial-gradient(circle at 25% 25%, white 1px, transparent 1px)", backgroundSize: "32px 32px" }} />
+                <div className="z-10 flex flex-col items-center max-w-lg">
+                    <img src="/images/logo/logo-icon.svg" alt="Ciyex" className="w-20 h-20 mb-6 drop-shadow-lg" />
+                    <h1 className="text-4xl font-bold mb-3 text-center tracking-tight">Ciyex Portal</h1>
+                    <p className="text-base text-white/80 text-center font-light mb-8">
+                        Your Health. Your Control.
                     </p>
+                    <div className="space-y-3 w-full">
+                        {[
+                            { icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2", label: "Access your medical records anytime" },
+                            { icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z", label: "View & manage your appointments" },
+                            { icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z", label: "HIPAA-compliant & secure" },
+                            { icon: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z", label: "Message your care team" },
+                        ].map((item, i) => (
+                            <div key={i} className="flex items-center gap-3 bg-white/10 rounded-lg px-4 py-2.5 backdrop-blur-sm">
+                                <svg className="w-5 h-5 text-white/90 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={item.icon} />
+                                </svg>
+                                <span className="text-sm text-white/90">{item.label}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -227,121 +227,223 @@ export default function SignInForm() {
             <div className="flex items-center justify-center p-6 sm:p-12 w-full bg-gray-50 dark:bg-gray-900">
                 <div className="w-full max-w-sm">
                     <div className="lg:hidden text-center mb-10">
-                        <div className="inline-flex items-center justify-center w-16 h-16 bg-linear-to-br from-purple-600 to-blue-600 rounded-2xl shadow-lg mb-4">
-                            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                            </svg>
-                        </div>
+                        <img src="/images/logo/logo-icon.svg" alt="Ciyex" className="w-14 h-14 mx-auto mb-3" />
                         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Ciyex Portal</h1>
                     </div>
 
                     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8">
-                        <div className="mb-6 text-center">
-                            <h2 className="text-2xl font-semibold text-gray-800 dark:text-white">
-                                Secure Sign-In
-                            </h2>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                {keycloakEnabled ? 'Sign in with Aran (Keycloak)' : 'Use your Aran account or local credentials'}
-                            </p>
-                        </div>
+                        {step === "email" && (
+                            <>
+                                <div className="mb-6 text-center">
+                                    <h2 className="text-2xl font-semibold text-gray-800 dark:text-white">Sign In</h2>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                        Enter your email to continue
+                                    </p>
+                                </div>
 
-                        {/* Keycloak Sign In Button */}
-                        {keycloakEnabled && (
-                            <div className="mb-6">
-                                <Button 
-                                    className="w-full flex items-center justify-center gap-3 py-3 text-base font-medium shadow-lg bg-blue-600 hover:bg-blue-700 text-white rounded-lg hover:shadow-xl transition-all duration-200" 
-                                    size="md" 
-                                    onClick={handleKeycloakSignIn}
-                                    disabled={loading}
-                                >
-                                    {loading ? (
-                                        <>
-                                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                                            <span>Redirecting...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
-                                            </svg>
-                                            <span>Sign in with Aran</span>
-                                        </>
+                                <form onSubmit={handleDiscover} className="space-y-4">
+                                    <div>
+                                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                            Email
+                                        </label>
+                                        <input
+                                            id="email"
+                                            type="email"
+                                            placeholder="you@example.com"
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            disabled={loading}
+                                            autoComplete="email"
+                                            autoFocus
+                                            required
+                                            className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all text-sm"
+                                        />
+                                    </div>
+
+                                    {error && (
+                                        <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400">
+                                            {error}
+                                            {!discoverResult?.exists && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => router.push("/signup")}
+                                                    className="block mt-2 text-purple-600 dark:text-purple-400 hover:underline font-medium"
+                                                >
+                                                    Create an account
+                                                </button>
+                                            )}
+                                        </div>
                                     )}
-                                </Button>
-                            </div>
-                        )}
 
-                        {/* Local Login Form (only when Keycloak is disabled) */}
-                        {error && (
-                            <div className="mb-4 text-sm text-red-600 bg-red-50 px-3 py-2 rounded">
-                                {error}
-                            </div>
-                        )}
-
-                        {!keycloakEnabled && (
-                            <form onSubmit={handleLocalSignIn} className="space-y-4">
-                                <input
-                                    type="email"
-                                    name="email"
-                                    placeholder="Email"
-                                    value={form.email}
-                                    onChange={handleChange}
-                                    className="w-full border rounded-md px-3 py-2 focus:ring focus:ring-blue-200 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                    required
-                                />
-                                <div className="relative">
-                                    <input
-                                        type={showPassword ? "text" : "password"}
-                                        name="password"
-                                        placeholder="Password"
-                                        value={form.password}
-                                        onChange={handleChange}
-                                        className="w-full border rounded-md px-3 py-2 focus:ring focus:ring-blue-200 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                        required
-                                    />
                                     <button
-                                        type="button"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 top-2 text-xs text-blue-600 dark:text-blue-400"
+                                        type="submit"
+                                        disabled={loading || !email.trim()}
+                                        className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-semibold shadow-md bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white rounded-lg transition-all duration-200"
                                     >
-                                        {showPassword ? "Hide" : "Show"}
+                                        {loading ? (
+                                            <>
+                                                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                                </svg>
+                                                Checking...
+                                            </>
+                                        ) : (
+                                            "Continue"
+                                        )}
                                     </button>
-                                </div>
+                                </form>
+                            </>
+                        )}
 
-                                <div className="flex justify-end">
-                                    <a
-                                        href="/forgot-password"
-                                        className="text-xs text-blue-600 hover:underline dark:text-blue-400"
+                        {step === "authenticate" && (
+                            <>
+                                <div className="mb-6">
+                                    <button
+                                        onClick={handleBack}
+                                        className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mb-4"
                                     >
-                                        Forgot Password?
-                                    </a>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                        </svg>
+                                        Back
+                                    </button>
+                                    <h2 className="text-2xl font-semibold text-gray-800 dark:text-white">Welcome back</h2>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                        {email}
+                                        {discoverResult?.orgName && (
+                                            <span className="block text-xs mt-0.5">{discoverResult.orgName}</span>
+                                        )}
+                                    </p>
                                 </div>
 
-                                <button
-                                    type="submit"
-                                    disabled={localLoading}
-                                    className="w-full bg-purple-600 text-white py-2 rounded-md hover:bg-purple-700 transition disabled:opacity-50"
-                                >
-                                    {localLoading ? "Logging in..." : "Log In with Email"}
-                                </button>
-                            </form>
+                                {/* Password form */}
+                                {discoverResult?.authMethods?.includes("password") && (
+                                    <form onSubmit={handlePasswordLogin} className="space-y-4">
+                                        <div>
+                                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                                Password
+                                            </label>
+                                            <div className="relative">
+                                                <input
+                                                    id="password"
+                                                    type={showPassword ? "text" : "password"}
+                                                    placeholder="Enter your password"
+                                                    value={password}
+                                                    onChange={(e) => setPassword(e.target.value)}
+                                                    disabled={loading}
+                                                    autoComplete="current-password"
+                                                    autoFocus
+                                                    required
+                                                    className="w-full px-3.5 py-2.5 pr-10 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all text-sm"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowPassword(!showPassword)}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                                    tabIndex={-1}
+                                                >
+                                                    {showPassword ? (
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                                        </svg>
+                                                    ) : (
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                        </svg>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {error && (
+                                            <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400">
+                                                {error}
+                                            </div>
+                                        )}
+
+                                        <button
+                                            type="submit"
+                                            disabled={loading || !password}
+                                            className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-semibold shadow-md bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white rounded-lg transition-all duration-200"
+                                        >
+                                            {loading ? (
+                                                <>
+                                                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                                    </svg>
+                                                    Signing in...
+                                                </>
+                                            ) : (
+                                                "Sign in"
+                                            )}
+                                        </button>
+                                    </form>
+                                )}
+
+                                {/* IDP buttons */}
+                                {discoverResult?.idps && discoverResult.idps.length > 0 && (
+                                    <>
+                                        {discoverResult.authMethods?.includes("password") && (
+                                            <div className="relative my-5">
+                                                <div className="absolute inset-0 flex items-center">
+                                                    <div className="w-full border-t border-gray-200 dark:border-gray-600" />
+                                                </div>
+                                                <div className="relative flex justify-center text-xs">
+                                                    <span className="bg-white dark:bg-gray-800 px-3 text-gray-500 dark:text-gray-400">or continue with</span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="space-y-2">
+                                            {discoverResult.idps.map((idp) => (
+                                                <button
+                                                    key={idp.alias}
+                                                    type="button"
+                                                    onClick={() => handleIdpLogin(idp.alias)}
+                                                    disabled={loading}
+                                                    className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all"
+                                                >
+                                                    {idp.providerId === "google" && (
+                                                        <svg className="w-4 h-4" viewBox="0 0 24 24">
+                                                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
+                                                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                                                        </svg>
+                                                    )}
+                                                    {idp.providerId === "microsoft" && (
+                                                        <svg className="w-4 h-4" viewBox="0 0 21 21">
+                                                            <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+                                                            <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+                                                            <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+                                                            <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+                                                        </svg>
+                                                    )}
+                                                    {idp.displayName || idp.alias}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+                            </>
                         )}
                     </div>
 
-                    <div className="mt-6">
-                        <p className="text-xs text-center text-gray-500 dark:text-gray-400">
-                            Don&apos;t have an account?{" "}
-                            <a href="/signup" className="font-medium text-blue-600 hover:underline dark:text-blue-400">
-                                Sign up
-                            </a>
-                        </p>
-                        <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
-                            By signing in, you agree to our{' '}
-                            <a href="#" className="font-medium text-blue-600 hover:underline dark:text-blue-400">
-                                Terms
-                            </a> & <a href="#" className="font-medium text-blue-600 hover:underline dark:text-blue-400">
-                                Privacy Policy
-                            </a>.
+                    <div className="mt-6 text-center space-y-2">
+                        <a
+                            href="/signup"
+                            className="text-sm font-medium text-purple-600 hover:underline dark:text-purple-400"
+                        >
+                            New patient? Create an account
+                        </a>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                            By signing in, you agree to our{" "}
+                            <a href="#" className="font-medium text-purple-600 hover:underline dark:text-purple-400">Terms</a>
+                            {" & "}
+                            <a href="#" className="font-medium text-purple-600 hover:underline dark:text-purple-400">Privacy Policy</a>.
                         </p>
                     </div>
                 </div>

@@ -20,11 +20,12 @@ interface PortalApiResponse<T> {
 }
 
 interface PortalUserDto {
-  id: number;
+  userId: number;
+  fhirId?: string;
   email: string;
   firstName: string;
   lastName: string;
-  orgId: number;
+  orgAlias?: string;
   role?: string;
 }
 
@@ -152,29 +153,20 @@ export default function SignUpPage() {
       const data: PortalApiResponse<PortalUserDto> = JSON.parse(text);
       if (!data.success || !data.data) throw new Error(data.message);
 
-      // For portal patient registration, show success message about approval process
-      if (data.data.role === "PATIENT") {
-        // Clear form and show success message
-        setForm({
-          firstName: "", middleName: "", lastName: "", email: "", password: "",
-          dateOfBirth: "", gender: "", phoneNumber: "", street: "", city: "",
-          state: "", country: "", postalCode: "", securityQuestion: "",
-          securityAnswer: "", orgAlias: ""
-        });
-        setOrgSearch("");
-        setCaptchaToken(null);
-        
-        alert("Registration successful! Your account is pending approval. You will receive an email notification once your account is approved by the healthcare provider.");
-        
-        // Redirect to signin page
-        router.push("/signin");
-      } else {
-        // For non-patient users, proceed normally
-        localStorage.setItem("user", JSON.stringify(data.data));
-        localStorage.setItem("orgId", data.data.orgId.toString());
-        localStorage.setItem("role", data.data.role || "PATIENT");
-        router.push("/dashboard");
-      }
+      // Portal self-registration is always PATIENT (role may not be in response)
+      setForm({
+        firstName: "", middleName: "", lastName: "", email: "", password: "",
+        dateOfBirth: "", gender: "", phoneNumber: "", street: "", city: "",
+        state: "", country: "", postalCode: "", securityQuestion: "",
+        securityAnswer: "", orgAlias: ""
+      });
+      setOrgSearch("");
+      setCaptchaToken(null);
+
+      alert("Registration successful! Your account is pending approval. You will receive an email notification once your account is approved by the healthcare provider.");
+
+      // Redirect to signin page
+      router.push("/signin");
     } catch (err: unknown) {
       setError(getErrorMessage(err) || "Something went wrong.");
     } finally {

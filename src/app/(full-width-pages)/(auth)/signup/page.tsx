@@ -1,7 +1,7 @@
 "use client";
 
 import { getEnv } from "@/utils/env";
-import { useState, useEffect, FormEvent, KeyboardEvent } from "react";
+import { useState, useEffect, useRef, FormEvent, KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import ReCAPTCHA from "react-google-recaptcha";
@@ -34,6 +34,7 @@ export default function SignUpPage() {
   const [orgSearch, setOrgSearch] = useState("");
   const [orgResults, setOrgResults] = useState<Org[]>([]);
   const [highlightIndex, setHighlightIndex] = useState(0);
+  const orgSelected = useRef(false);
 
   const [form, setForm] = useState({
     firstName: "",
@@ -66,6 +67,10 @@ export default function SignUpPage() {
 
   // 🔹 Org search with autocomplete
   useEffect(() => {
+    if (orgSelected.current) {
+      orgSelected.current = false;
+      return;
+    }
     const delayDebounce = setTimeout(async () => {
       if (orgSearch.trim().length < 2) {
         setOrgResults([]);
@@ -120,6 +125,7 @@ export default function SignUpPage() {
       e.preventDefault();
       const selected = orgResults[highlightIndex];
       if (selected) {
+        orgSelected.current = true;
         setForm({ ...form, orgAlias: selected.orgAlias });
         setOrgSearch(selected.orgName);
         setOrgResults([]);
@@ -314,6 +320,7 @@ export default function SignUpPage() {
                   <div
                     key={org.orgAlias}
                     onClick={() => {
+                      orgSelected.current = true;
                       setForm({ ...form, orgAlias: org.orgAlias });
                       setOrgSearch(org.orgName);
                       setOrgResults([]);

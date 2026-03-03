@@ -1,7 +1,7 @@
 "use client";
 
 import { getEnv } from "@/utils/env";
-import { useState, useEffect, useRef, FormEvent, KeyboardEvent } from "react";
+import { useState, useEffect, FormEvent, KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import ReCAPTCHA from "react-google-recaptcha";
@@ -34,7 +34,6 @@ export default function SignUpPage() {
   const [orgSearch, setOrgSearch] = useState("");
   const [orgResults, setOrgResults] = useState<Org[]>([]);
   const [highlightIndex, setHighlightIndex] = useState(0);
-  const orgSelected = useRef(false);
 
   const [form, setForm] = useState({
     firstName: "",
@@ -67,8 +66,9 @@ export default function SignUpPage() {
 
   // 🔹 Org search with autocomplete
   useEffect(() => {
-    if (orgSelected.current) {
-      orgSelected.current = false;
+    // Skip search if an org was already selected
+    if (form.orgAlias) {
+      setOrgResults([]);
       return;
     }
     const delayDebounce = setTimeout(async () => {
@@ -102,7 +102,8 @@ export default function SignUpPage() {
       }
     }, 250);
     return () => clearTimeout(delayDebounce);
-  }, [orgSearch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgSearch, form.orgAlias]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -125,7 +126,6 @@ export default function SignUpPage() {
       e.preventDefault();
       const selected = orgResults[highlightIndex];
       if (selected) {
-        orgSelected.current = true;
         setForm({ ...form, orgAlias: selected.orgAlias });
         setOrgSearch(selected.orgName);
         setOrgResults([]);
@@ -310,7 +310,10 @@ export default function SignUpPage() {
             <input
               placeholder="Search organization..."
               value={orgSearch}
-              onChange={(e) => setOrgSearch(e.target.value)}
+              onChange={(e) => {
+                setOrgSearch(e.target.value);
+                if (form.orgAlias) setForm({ ...form, orgAlias: "" });
+              }}
               onKeyDown={handleOrgKeyDown}
               className="border rounded px-2 py-1 col-span-2"
             />
@@ -320,7 +323,6 @@ export default function SignUpPage() {
                   <div
                     key={org.orgAlias}
                     onClick={() => {
-                      orgSelected.current = true;
                       setForm({ ...form, orgAlias: org.orgAlias });
                       setOrgSearch(org.orgName);
                       setOrgResults([]);

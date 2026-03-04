@@ -1,237 +1,85 @@
 "use client";
 
-import { getEnv } from "@/utils/env";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
 import { getTelehealthIdentity } from "@/utils/jwtHelper";
-import Alert from "@/components/ui/alert/Alert";
 
 export default function PatientTelehealthPage() {
-  const params = useParams();
-  const router = useRouter();
-  const appointmentId = params?.appointmentId as string;
+    const params = useParams();
+    const router = useRouter();
+    const appointmentId = params?.appointmentId as string;
 
-  const API_BASE = getEnv("NEXT_PUBLIC_BACKEND_URL") || "http://localhost:8080";
+    const [error, setError] = useState<string | null>(null);
 
-  const [meetingUrl, setMeetingUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [alert, setAlert] = useState<{ type: "success" | "error"; msg: string } | null>(null);
-  const [appointmentInfo, setAppointmentInfo] = useState<{
-    id: string;
-    providerName?: string; 
-    patientName?: string;
-  } | null>(null);
-
-  /** 🔹 End call and navigate back */
-  const endCall = () => {
-    router.push('/appointments');
-  };
-
-  /** 🔹 Load appointment and join video call */
-  useEffect(() => {
-    async function initVideoCall() {
-      if (!appointmentId) {
-        setAlert({ type: "error", msg: "Appointment ID is required" });
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        
-        // Generate room name based on appointment ID
-        const roomName = `apt${appointmentId}`;
-        const identity = getTelehealthIdentity();
-
-        // Get join token for patient using Jitsi endpoint
-        // Get orgId from localStorage to ensure proper authentication
-        const orgId = typeof window !== "undefined" ? localStorage.getItem("orgId") : null;
-        
-        const joinResponse = await fetchWithAuth(`/api/telehealth/jitsi/join`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(orgId ? { "x-org-id": orgId } : {}), // Add org-id header for tenant context
-          },
-          body: JSON.stringify({
-            roomName,
-            identity,
-            ttlSeconds: 3600, // 1 hour
-          }),
-        });
-
-        if (!joinResponse.ok) {
-          const errorText = await joinResponse.text();
-          if (joinResponse.status === 404) {
-            throw new Error("Video call room not found. Please make sure your provider has started the video call.");
-          }
-          throw new Error(`Failed to get join token: ${errorText}`);
+    useEffect(() => {
+        if (!appointmentId) {
+            setError("Appointment ID is required");
+            return;
         }
+        joinSession();
+    }, [appointmentId]);
 
-        const joinData = await joinResponse.json();
-        console.log('Join response:', joinData);
-        
-        // Handle different response formats from backend
-        let url = joinData.meetingUrl || joinData.url || joinData.data?.meetingUrl || joinData.data?.url;
-        
-        // Fallback: Generate Jitsi URL directly if backend doesn't provide one
-        if (!url) {
-          console.warn('No meeting URL in response, generating fallback URL');
-          const jitsiDomain = getEnv("NEXT_PUBLIC_JITSI_DOMAIN") || 'meet.jit.si';
-          url = `https://${jitsiDomain}/${roomName}?jwt=${joinData.token || ''}`;
+    const joinSession = async () => {
+        try {
+            const roomName = `apt${appointmentId}`;
+            const identity = getTelehealthIdentity();
+
+            // Create or find session for this appointment
+            const res = await fetchWithAuth(`/api/telehealth/jitsi/join`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ roomName, identity, ttlSeconds: 3600 }),
+            });
+
+            if (!res.ok) {
+                if (res.status === 404) {
+                    throw new Error("Video call room not found. Please make sure your provider has started the video call.");
+                }
+                const errorText = await res.text();
+                throw new Error(`Failed to join: ${errorText}`);
+            }
+
+            const data = await res.json();
+            const sessionId = data.sessionId || data.data?.sessionId;
+
+            if (sessionId) {
+                // Redirect to mediasoup session page
+                router.replace(`/telehealth/session/${sessionId}`);
+            } else {
+                throw new Error("No session found for this appointment. Please contact your provider.");
+            }
+        } catch (err: any) {
+            console.error("Failed to join telehealth:", err);
+            setError(err.message || "Failed to join video call");
         }
+    };
 
-        setMeetingUrl(url);
-        setAppointmentInfo({
-          id: appointmentId,
-          providerName: "Your Healthcare Provider",
-          patientName: "Patient"
-        });
-
-      } catch (err: unknown) {
-        console.error("Failed to initialize video call:", err);
-        setAlert({
-          type: "error",
-          msg: err instanceof Error ? err.message : "Failed to join video call"
-        });
-      } finally {
-        setLoading(false);
-      }
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+                <svg className="w-12 h-12 text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Unable to Join Video Call</h1>
+                <p className="text-gray-500 text-center max-w-md mb-6">{error}</p>
+                <div className="flex gap-3">
+                    <button onClick={() => joinSession()} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        Try Again
+                    </button>
+                    <button onClick={() => router.push("/appointments")} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300">
+                        Return to Appointments
+                    </button>
+                </div>
+            </div>
+        );
     }
 
-    initVideoCall();
-  }, [appointmentId, API_BASE]);
-
-  if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-        <p className="text-lg text-gray-700 dark:text-gray-300">Joining your telehealth session...</p>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Please wait while we connect you to your provider</p>
-      </div>
+        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+            <p className="text-lg text-gray-700 dark:text-gray-300">Joining your telehealth session...</p>
+            <p className="text-sm text-gray-500 mt-2">Please wait while we connect you to your provider</p>
+        </div>
     );
-  }
-
-  if (!meetingUrl || !appointmentInfo) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-        {alert && (
-          <div className="mb-4 max-w-md w-full">
-            <Alert
-              variant={alert.type}
-              title={alert.type === "error" ? "Connection Error" : "Success"}
-              message={alert.msg}
-            />
-          </div>
-        )}
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            Unable to Join Video Call
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            There was a problem connecting to your telehealth session.
-          </p>
-          <button
-            onClick={() => router.push('/appointments')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Return to Appointments
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col w-full h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <header className="w-full bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between shadow-sm">
-        <div className="flex items-center">
-          <div className="flex items-center mr-6">
-            <svg className="w-8 h-8 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-            </svg>
-            <div>
-              <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Telehealth Session
-              </h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Appointment #{appointmentId}
-              </p>
-            </div>
-          </div>
-          {appointmentInfo.providerName && (
-            <div className="hidden md:block">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Meeting with</p>
-              <p className="font-medium text-gray-900 dark:text-white">{appointmentInfo.providerName}</p>
-            </div>
-          )}
-        </div>
-        
-        <div className="flex gap-3 items-center">
-          {alert && (
-            <div className="max-w-xs">
-              <Alert
-                variant={alert.type}
-                title=""
-                message={alert.msg}
-              />
-            </div>
-          )}
-          <button
-            onClick={endCall}
-            className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium shadow-sm transition-colors"
-          >
-            End Call
-          </button>
-        </div>
-      </header>
-
-      {/* Video Call Area - Using iframe to embed the meeting URL */}
-      <div className="flex-1 bg-black relative">
-        <iframe
-          src={meetingUrl}
-          className="w-full h-full border-0"
-          allow="camera; microphone; display-capture; fullscreen"
-          title="Telehealth Video Call"
-        />
-        
-        {/* Overlay with instructions (shown for a few seconds) */}
-        <div className="absolute top-4 left-4 right-4 bg-green-600 text-white p-3 rounded-lg shadow-lg animate-pulse">
-          <div className="flex items-center">
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            <span className="text-sm font-medium">
-              You&apos;re joining the video call. Please allow camera and microphone access when prompted.
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer with patient instructions */}
-      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-3">
-        <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center text-gray-600 dark:text-gray-400">
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            <span>Your session is secure and private</span>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="text-gray-500 dark:text-gray-400">
-              Need help? Contact support
-            </div>
-            <button
-              onClick={() => window.open(meetingUrl, '_blank')}
-              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-            >
-              Open in New Window
-            </button>
-          </div>
-        </div>
-      </footer>
-    </div>
-  );
 }

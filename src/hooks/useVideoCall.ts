@@ -5,15 +5,16 @@
 
 "use client";
 
-import { useState, useEffect, useRef, useCallback, RefObject } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import type { RefObject } from "react";
 import type { VideoCallSession, ChatMessage, RemotePeer, CallStatus } from "@/lib/telehealth/VideoCallProvider";
 import type { VideoCallProvider } from "@/lib/telehealth/VideoCallProvider";
 
 interface UseVideoCallOptions {
     session: VideoCallSession | null;
     displayName: string;
-    localVideoRef: RefObject<HTMLVideoElement>;
-    remoteVideoRef: RefObject<HTMLVideoElement>;
+    localVideoRef: RefObject<HTMLVideoElement | null>;
+    remoteVideoRef: RefObject<HTMLVideoElement | null>;
 }
 
 interface UseVideoCallReturn {

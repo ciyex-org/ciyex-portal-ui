@@ -159,8 +159,8 @@ export default function MessagesPage() {
         if (!providerSearch.trim()) return providers;
         const q = providerSearch.toLowerCase();
         return providers.filter((p) =>
-            p.fullName.toLowerCase().includes(q) ||
-            p.professionalDetails?.specialty?.toLowerCase().includes(q)
+            p.fullName?.toLowerCase().includes(q) ||
+            p.professionalDetails?.specialty?.toLowerCase()?.includes(q)
         );
     }, [providers, providerSearch]);
 

@@ -70,7 +70,7 @@ export class MediasoupStompProvider implements VideoCallProvider {
                 reconnectDelay: 5000,
                 heartbeatIncoming: 10000,
                 heartbeatOutgoing: 10000,
-                debug: (msg) => { if (msg.includes("ERROR")) console.error("[STOMP]", msg); },
+                debug: (msg) => { if (msg?.includes("ERROR")) console.error("[STOMP]", msg); },
             });
 
             stompClient.onConnect = () => {

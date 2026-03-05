@@ -15,7 +15,8 @@ function fmtDate(d: string) {
     try { return new Date(d).toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric" }); } catch { return d; }
 }
 
-function fmtTime(t: string) {
+function fmtTime(t?: string) {
+    if (!t) return "";
     if (t.includes("AM") || t.includes("PM")) return t;
     try {
         const [h, m] = t.split(":");

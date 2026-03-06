@@ -80,7 +80,35 @@ export default function AppointmentsPage() {
                     fetchWithAuth("/api/portal/locations"),
                 ]);
                 const [appts, provs, locs] = await Promise.all([safeJson(apptRes), safeJson(provRes), safeJson(locRes)]);
-                setAppointments(Array.isArray(appts.data) ? appts.data : (appts.data?.content || []));
+                const rawAppts: any[] = Array.isArray(appts.data) ? appts.data : (appts.data?.content || []);
+                const normalizedAppts = rawAppts.map((a: any) => {
+                    // Parse start datetime into date + time parts
+                    const startStr: string = a.start || a.appointmentStartDate || "";
+                    const startDt = startStr ? new Date(startStr) : null;
+                    const startDate = startDt && !isNaN(startDt.getTime())
+                        ? `${String(startDt.getMonth()+1).padStart(2,"0")}/${String(startDt.getDate()).padStart(2,"0")}/${startDt.getFullYear()}`
+                        : (a.appointmentStartDate || "");
+                    const startTime = startDt && !isNaN(startDt.getTime())
+                        ? `${String(startDt.getHours()).padStart(2,"0")}:${String(startDt.getMinutes()).padStart(2,"0")}:00`
+                        : (a.appointmentStartTime || "");
+                    // Extract numeric providerId / locationId from FHIR references
+                    const providerRef: string = a.provider || "";
+                    const locationRef: string = a.location || "";
+                    const providerId = a.providerId || (providerRef.includes("/") ? Number(providerRef.split("/").pop()) : undefined);
+                    const locationId = a.locationId || (locationRef.includes("/") ? Number(locationRef.split("/").pop()) : undefined);
+                    return {
+                        ...a,
+                        id: a.id ? Number(a.id) : undefined,
+                        visitType: a.visitType && a.visitType !== "None" ? a.visitType : (a.appointmentType || ""),
+                        appointmentStartDate: startDate,
+                        appointmentStartTime: startTime,
+                        providerName: a.providerName || a.providerDisplay || "",
+                        locationName: a.locationName || (a.locationDisplay && a.locationDisplay !== "None" ? a.locationDisplay : ""),
+                        providerId: providerId,
+                        locationId: locationId,
+                    };
+                });
+                setAppointments(normalizedAppts);
                 setProviders(provs.data || []);
                 setLocations(locs.data || []);
 

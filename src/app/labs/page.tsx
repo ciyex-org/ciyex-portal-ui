@@ -45,7 +45,16 @@ export default function LabsPage() {
             const res = await fetchWithAuth("/api/portal/lab-orders");
             if (!res.ok) throw new Error("Failed to load lab orders");
             const data = await res.json();
-            setLabs(data.data || []);
+            const raw: any[] = Array.isArray(data.data) ? data.data : (data.data?.content || []);
+            setLabs(raw.map((item: any) => ({
+                id: item.id,
+                testName: item.testName || item.name || item.testCode || "Lab Order",
+                orderedDate: item.effectiveDate || item.orderedDate || item.issued || item._lastUpdated || "",
+                status: item.status || "unknown",
+                result: item.conclusion || item.result || undefined,
+                details: item.details || undefined,
+                providerName: item.performer || item.providerName || item.providerDisplay || undefined,
+            })));
         } catch (err) {
             setError(err instanceof Error ? err.message : "Could not load lab orders");
         } finally {

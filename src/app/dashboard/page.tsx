@@ -65,16 +65,27 @@ export default function Dashboard() {
             if (!d.success || !d.data) return;
             const now = Date.now();
             const upcoming = d.data
-                .filter((a: any) => new Date(a.appointmentStartDate || a.appointmentDate || "").getTime() > now)
+                .filter((a: any) => {
+                    const dateStr = a.start || a.appointmentStartDate || a.appointmentDate || "";
+                    return dateStr ? new Date(dateStr).getTime() > now : false;
+                })
                 .slice(0, 3)
-                .map((a: any) => ({
-                    id: a.id,
-                    appointmentDate: a.appointmentStartDate || a.appointmentDate || "",
-                    appointmentTime: a.appointmentStartTime || a.appointmentTime || "",
-                    providerName: a.providerName || "Provider",
-                    appointmentType: a.visitType || a.appointmentType || "Visit",
-                    status: a.status || "scheduled",
-                }));
+                .map((a: any) => {
+                    const startStr: string = a.start || a.appointmentStartDate || a.appointmentDate || "";
+                    const startDt = startStr ? new Date(startStr) : null;
+                    const dateStr = startDt && !isNaN(startDt.getTime()) ? startDt.toISOString() : startStr;
+                    const timeStr = startDt && !isNaN(startDt.getTime())
+                        ? `${String(startDt.getHours()).padStart(2, "0")}:${String(startDt.getMinutes()).padStart(2, "0")}:00`
+                        : (a.appointmentStartTime || a.appointmentTime || "");
+                    return {
+                        id: a.id,
+                        appointmentDate: dateStr,
+                        appointmentTime: timeStr,
+                        providerName: a.providerName || a.providerDisplay || "Provider",
+                        appointmentType: a.visitType || a.appointmentType || "Visit",
+                        status: a.status || "scheduled",
+                    };
+                });
             setAppointments(upcoming);
         } catch { /* optional */ }
     };

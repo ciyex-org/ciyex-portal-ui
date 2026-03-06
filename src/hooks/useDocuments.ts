@@ -27,16 +27,16 @@ export function useDocuments() {
         const data = await res.json();
         const mapped = (data.data || []).map((item: any) => ({
           id: item.id,
-          patientId: item.patientid,
+          patientId: item.patientId ?? item.patientid,
           category: item.category || 'Medical Records',
           type: item.type,
-          fileName: item.filename,
-          contentType: item.contenttype,
-          description: item.description,
-          encrypted: !!item.encryptionkey,
+          fileName: item.fileName ?? item.filename,
+          contentType: item.contentType ?? item.contenttype,
+          description: item.description || item.title,
+          encrypted: item.encrypted ?? !!item.encryptionkey,
           archived: item.archived || item.status === 'ARCHIVED' || false,
-          createdDate: item.created_date,
-          lastModifiedDate: item.last_modified_date
+          createdDate: item.documentDate ?? item.createdDate ?? item.created_date,
+          lastModifiedDate: item.lastModifiedDate ?? item.last_modified_date,
         }));
         setDocuments(mapped);
       } else if (res.status === 403) {

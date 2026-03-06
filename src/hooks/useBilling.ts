@@ -51,11 +51,21 @@ export function useBilling() {
           const data = await res.json();
           // data.data may be a paginated wrapper { content: [...], ... } or a plain array
           const raw = data.data;
-          const invoiceList = Array.isArray(raw)
+          const rawList: any[] = Array.isArray(raw)
             ? raw
             : Array.isArray(raw?.content)
             ? raw.content
             : [];
+          // Normalize FHIR Claim fields to ApiInvoice fields
+          const invoiceList = rawList.map((item: any) => ({
+            ...item,
+            invoiceNumber: item.invoiceNumber ?? (item.id ? `CLM-${item.id}` : undefined),
+            issueDate: item.issueDate ?? item.serviceDate,
+            totalGross: item.totalGross ?? (item.amount != null ? String(item.amount) : undefined),
+            payer: item.payer ?? item.providerDisplay,
+            notes: item.notes ?? item.description,
+            currency: item.currency ?? 'USD',
+          }));
           setInvoices(invoiceList);
         } else if (res.status === 403) {
           // Forbidden - set empty list and suppress error for UI continuity

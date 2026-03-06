@@ -79,7 +79,9 @@ function AuthCallbackContent() {
                     localStorage.setItem("user", JSON.stringify(data.data));
 
                     if (groups && groups.length > 0) {
-                        localStorage.setItem("primaryGroup", groups[0]);
+                        const systemGroups = ["offline_access", "uma_authorization", "default-roles-ciyex", "default-roles-master"];
+                        const meaningful = groups.find((g: string) => !systemGroups.includes(g.toLowerCase()));
+                        localStorage.setItem("primaryGroup", meaningful || groups[0]);
                     }
 
                     // Clean up PKCE code verifier

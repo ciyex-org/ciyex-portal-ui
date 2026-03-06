@@ -80,7 +80,9 @@ export default function SignInForm() {
         if (data.patientFhirId) localStorage.setItem("patientFhirId", data.patientFhirId);
 
         if (data.groups && data.groups.length > 0) {
-            localStorage.setItem("primaryGroup", data.groups[0]);
+            const systemGroups = ['offline_access', 'uma_authorization', 'default-roles-ciyex', 'default-roles-master'];
+            const meaningful = data.groups.find((g: string) => !systemGroups.includes(g.toLowerCase()));
+            localStorage.setItem("primaryGroup", meaningful || data.groups[0]);
         }
 
         // Notify contexts that token is available

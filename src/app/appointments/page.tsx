@@ -246,7 +246,7 @@ export default function AppointmentsPage() {
                                                 <td className="px-4 py-3">{statusBadge(a.status)}</td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-1.5">
-                                                        {isVirtual(a.visitType) && (a.status?.toLowerCase() === "scheduled" || a.status?.toLowerCase() === "pending") && a.id && (
+                                                        {isVirtual(a.visitType) && (["scheduled", "pending", "booked", "arrived", "proposed"].includes((a.status || "").toLowerCase())) && a.id && (
                                                             <button onClick={() => window.open(`/telehealth/${a.id}`, "_blank")} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors">
                                                                 <Video className="h-3 w-3" /> Join
                                                             </button>

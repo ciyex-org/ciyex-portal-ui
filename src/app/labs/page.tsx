@@ -9,6 +9,8 @@ type LabOrder = {
     id: number;
     testName: string;
     orderedDate: string;
+    collectionDate?: string;
+    resultDate?: string;
     status: string;
     result?: string;
     details?: string;
@@ -48,12 +50,14 @@ export default function LabsPage() {
             const raw: any[] = Array.isArray(data.data) ? data.data : (data.data?.content || []);
             setLabs(raw.map((item: any) => ({
                 id: item.id,
-                testName: item.testName || item.name || item.testCode || "Lab Order",
-                orderedDate: item.effectiveDate || item.orderedDate || item.issued || item._lastUpdated || "",
+                testName: item.testName || item.testDisplay || item.orderName || item.name || item.testCode || "Lab Order",
+                orderedDate: item.orderDate || item.orderDateTime || item.effectiveDate || item.orderedDate || item.issued || item._lastUpdated || "",
+                collectionDate: item.collectedDate || item.collectionDate || item.specimenCollectedDate || undefined,
+                resultDate: item.reportedDate || item.resultDate || item.resultDateTime || item.signedAt || undefined,
                 status: item.status || "unknown",
                 result: item.conclusion || item.result || undefined,
                 details: item.details || undefined,
-                providerName: item.performer || item.providerName || item.providerDisplay || undefined,
+                providerName: item.physicianName || item.orderingProvider || item.performer || item.providerName || item.providerDisplay || undefined,
             })));
         } catch (err) {
             setError(err instanceof Error ? err.message : "Could not load lab orders");
@@ -98,6 +102,8 @@ export default function LabsPage() {
                                     <tr className="border-b border-gray-200 bg-gray-50/50">
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Test Name</th>
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Ordered</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Collection Date</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Result Date</th>
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Provider</th>
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Result</th>
@@ -111,6 +117,8 @@ export default function LabsPage() {
                                                 <span className="text-sm font-medium text-gray-900">{lab.testName}</span>
                                             </td>
                                             <td className="px-4 py-3 text-sm text-gray-700">{fmtDate(lab.orderedDate)}</td>
+                                            <td className="px-4 py-3 text-sm text-gray-700">{fmtDate(lab.collectionDate)}</td>
+                                            <td className="px-4 py-3 text-sm text-gray-700">{fmtDate(lab.resultDate)}</td>
                                             <td className="px-4 py-3 text-sm text-gray-700">{lab.providerName || "—"}</td>
                                             <td className="px-4 py-3">{statusBadge(lab.status)}</td>
                                             <td className="px-4 py-3 text-sm text-gray-700">{lab.result || "—"}</td>

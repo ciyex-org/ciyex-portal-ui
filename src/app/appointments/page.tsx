@@ -83,14 +83,23 @@ export default function AppointmentsPage() {
                 const rawAppts: any[] = Array.isArray(appts.data) ? appts.data : (appts.data?.content || []);
                 const normalizedAppts = rawAppts.map((a: any) => {
                     // Parse start datetime into date + time parts
-                    const startStr: string = a.start || a.appointmentStartDate || "";
+                    const startStr: string = a.start || a.appointmentStart || a.appointmentStartDate || a.startDateTime || "";
                     const startDt = startStr ? new Date(startStr) : null;
                     const startDate = startDt && !isNaN(startDt.getTime())
                         ? `${String(startDt.getMonth()+1).padStart(2,"0")}/${String(startDt.getDate()).padStart(2,"0")}/${startDt.getFullYear()}`
-                        : (a.appointmentStartDate || "");
+                        : (a.appointmentStartDate || a.date || "");
                     const startTime = startDt && !isNaN(startDt.getTime())
                         ? `${String(startDt.getHours()).padStart(2,"0")}:${String(startDt.getMinutes()).padStart(2,"0")}:00`
-                        : (a.appointmentStartTime || "");
+                        : (a.appointmentStartTime || a.time || "");
+                    // Parse end datetime
+                    const endStr: string = a.end || a.appointmentEnd || a.appointmentEndDate || a.endDateTime || "";
+                    const endDt = endStr ? new Date(endStr) : null;
+                    const endDate = endDt && !isNaN(endDt.getTime())
+                        ? `${String(endDt.getMonth()+1).padStart(2,"0")}/${String(endDt.getDate()).padStart(2,"0")}/${endDt.getFullYear()}`
+                        : (a.appointmentEndDate || "");
+                    const endTime = endDt && !isNaN(endDt.getTime())
+                        ? `${String(endDt.getHours()).padStart(2,"0")}:${String(endDt.getMinutes()).padStart(2,"0")}:00`
+                        : (a.appointmentEndTime || "");
                     // Extract numeric providerId / locationId from FHIR references
                     const providerRef: string = a.provider || "";
                     const locationRef: string = a.location || "";
@@ -102,6 +111,8 @@ export default function AppointmentsPage() {
                         visitType: a.visitType && a.visitType !== "None" ? a.visitType : (a.appointmentType || ""),
                         appointmentStartDate: startDate,
                         appointmentStartTime: startTime,
+                        appointmentEndDate: endDate,
+                        appointmentEndTime: endTime,
                         providerName: a.providerName || a.providerDisplay || "",
                         locationName: a.locationName || (a.locationDisplay && a.locationDisplay !== "None" ? a.locationDisplay : ""),
                         providerId: providerId,

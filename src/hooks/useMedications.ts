@@ -64,7 +64,7 @@ export function useMedications() {
             dosage: item.dosage,
             instructions: item.instructions,
             dateIssued: item.dateIssued,
-            prescribingDoctor: item.prescribingDoctor,
+            prescribingDoctor: item.prescribingDoctor || item.prescriberName || item.prescriber,
             status: item.status,
             audit: {
               createdDate: mapDate(item.audit?.createdDate),

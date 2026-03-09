@@ -89,11 +89,17 @@ export function useInsurance() {
         if (data.success && data.data) {
           // data.data may be a paginated wrapper { content: [...], ... } or a plain array
           const raw = data.data;
-          const coverageList = Array.isArray(raw)
+          const rawList = Array.isArray(raw)
             ? raw
             : Array.isArray(raw?.content)
             ? raw.content
             : [];
+          // Normalize field names from backend variations
+          const coverageList = rawList.map((item: any) => ({
+            ...item,
+            coverageStartDate: item.coverageStartDate || item.effectiveDate || item.startDate || item.coverageStart || "",
+            coverageEndDate: item.coverageEndDate || item.effectiveDateEnd || item.endDate || item.coverageEnd || item.expirationDate || "",
+          }));
           setCoverages(coverageList);
         } else {
           setCoverages([]);

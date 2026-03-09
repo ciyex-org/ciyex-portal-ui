@@ -32,7 +32,12 @@ export default function AllergiesPage() {
         try {
             const res = await fetchWithAuth("/api/portal/allergies");
             const data = await res.json();
-            setAllergies((data.data || []).map((i: any) => ({ id: i.id, substance: i.allergy_name || i.substance, reaction: i.reaction, severity: i.severity })));
+            setAllergies((data.data || []).map((i: any) => ({
+            id: i.id,
+            substance: i.allergyName || i.allergy_name || i.substance || i.code || i.name || "",
+            reaction: i.reaction || i.reactionManifestations || i.manifestation || i.reactions || "",
+            severity: i.severity || i.criticalityText || i.criticality || "Mild",
+        })));
         } catch { setAlert({ type: "error", message: "Failed to load allergies." }); }
     }
 

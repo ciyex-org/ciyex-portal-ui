@@ -120,7 +120,21 @@ export default function BillingPage() {
                                                 <td className="px-4 py-3">{statusBadge(inv.status)}</td>
                                                 <td className="px-4 py-3">
                                                     <span className="text-sm text-gray-700">{inv.payer || "Self"}</span>
-                                                    {inv.lines?.length > 0 && <div className="text-xs text-gray-400">{inv.lines.length} item{inv.lines.length !== 1 ? "s" : ""}</div>}
+                                                    {inv.lines?.length > 0 && (
+                                                        <div className="text-xs text-gray-400 mt-0.5 space-y-0.5">
+                                                            {inv.lines.slice(0, 3).map((line: any, li: number) => (
+                                                                <span key={li} className="block">
+                                                                    {line.code || line.cptCode || line.serviceCode ? (
+                                                                        <span className="font-mono">{line.code || line.cptCode || line.serviceCode}</span>
+                                                                    ) : null}
+                                                                    {(line.code || line.cptCode || line.serviceCode) && line.description ? " · " : null}
+                                                                    {line.description && <span className="truncate">{line.description}</span>}
+                                                                    {!line.code && !line.cptCode && !line.serviceCode && !line.description && `Item ${li + 1}`}
+                                                                </span>
+                                                            ))}
+                                                            {inv.lines.length > 3 && <span>+{inv.lines.length - 3} more</span>}
+                                                        </div>
+                                                    )}
                                                 </td>
                                             </tr>
                                         ))}

@@ -56,6 +56,16 @@ async function api<T>(path: string, opts?: RequestInit): Promise<T | null> {
     } catch { return null; }
 }
 
+/** Convert Java date arrays [y,m,d,h,min,...] or strings to ISO string */
+function normDate(v: unknown): string {
+    if (!v) return new Date().toISOString();
+    if (Array.isArray(v)) {
+        const [y, m = 1, d = 1, h = 0, min = 0, s = 0] = v as number[];
+        return new Date(y, m - 1, d, h, min, s).toISOString();
+    }
+    return String(v);
+}
+
 /* ───── Page ───── */
 export default function MessagesPage() {
     const { providers } = useProviders();
@@ -86,8 +96,12 @@ export default function MessagesPage() {
         (async () => {
             const data = await api<Channel[]>("/api/channels");
             const list = Array.isArray(data) ? data : [];
-            // portal: only show DM conversations
-            setChannels(list.filter((c) => c.type === "dm" || c.type === "group_dm"));
+            // portal: only show DM conversations; normalize dates
+            setChannels(list.filter((c) => c.type === "dm" || c.type === "group_dm").map((c: any) => ({
+                ...c,
+                createdAt: normDate(c.createdAt),
+                lastMessage: c.lastMessage ? { ...c.lastMessage, createdAt: normDate(c.lastMessage.createdAt) } : c.lastMessage,
+            })));
             setLoadingChannels(false);
         })();
     }, [currentUserId]);
@@ -98,7 +112,8 @@ export default function MessagesPage() {
         setLoadingMessages(true);
         (async () => {
             const data = await api<MessageItem[]>(`/api/channels/${activeChannelId}/messages?limit=100`);
-            setMessages(Array.isArray(data) ? data : []);
+            const msgs = Array.isArray(data) ? data : [];
+            setMessages(msgs.map((m: any) => ({ ...m, createdAt: normDate(m.createdAt) })));
             setLoadingMessages(false);
             // mark read
             fetchWithAuth(`/api/channels/${activeChannelId}/read`, { method: "POST" }).catch(() => {});

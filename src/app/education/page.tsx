@@ -109,6 +109,11 @@ export default function PatientEducationPage() {
                                                 <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0 mt-0.5" />
                                                 <div>
                                                     <p className="text-xs font-medium text-green-800">Assigned by your provider</p>
+                                                    {assignment.assignedDate && (
+                                                        <p className="text-xs text-green-700 mt-0.5">
+                                                            {new Date(assignment.assignedDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                                        </p>
+                                                    )}
                                                     {assignment.notes && <p className="text-xs text-green-700 mt-0.5">{assignment.notes}</p>}
                                                 </div>
                                             </div>

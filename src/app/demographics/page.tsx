@@ -322,8 +322,11 @@ export default function DemographicsPage() {
       const json = await res.json();
       if (json.success) {
         if (json.data) {
-          setFormData(json.data);
-          setOriginal(json.data);
+          const merged = { ...formData, ...json.data };
+          setFormData(merged);
+          setOriginal(merged);
+        } else {
+          setOriginal({ ...formData });
         }
         setEditMode(false);
         setAlert({ type: "success", message: "Demographics updated successfully." });

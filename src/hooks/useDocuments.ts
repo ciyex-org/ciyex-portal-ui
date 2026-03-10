@@ -25,18 +25,19 @@ export function useDocuments() {
       const res = await fetchWithAuth("/api/fhir/portal/documents/my");
       if (res.ok) {
         const data = await res.json();
-        const mapped = (data.data || []).map((item: any) => ({
+        const rawList = Array.isArray(data.data) ? data.data : (data.data?.content || []);
+        const mapped = rawList.map((item: any) => ({
           id: item.id,
           patientId: item.patientId ?? item.patientid,
           category: item.category || 'Medical Records',
           type: item.type,
-          fileName: item.fileName ?? item.filename,
-          contentType: item.contentType ?? item.contenttype,
+          fileName: item.fileName ?? item.filename ?? item.name ?? 'Document',
+          contentType: item.contentType ?? item.contenttype ?? '',
           description: item.description || item.title,
-          encrypted: item.encrypted ?? !!item.encryptionkey,
+          encrypted: item.encrypted ?? !!(item.encryptionkey || item.encryptionKey),
           archived: item.archived || item.status === 'ARCHIVED' || false,
-          createdDate: item.documentDate ?? item.createdDate ?? item.created_date,
-          lastModifiedDate: item.lastModifiedDate ?? item.last_modified_date,
+          createdDate: item.documentDate ?? item.createdDate ?? item.created_date ?? item.uploadDate ?? '',
+          lastModifiedDate: item.lastModifiedDate ?? item.last_modified_date ?? '',
         }));
         setDocuments(mapped);
       } else if (res.status === 403) {
@@ -77,20 +78,26 @@ export function useDocuments() {
     }
   };
 
-  const viewDocument = async (docId: number) => {
+  const viewDocument = async (docId: number): Promise<string | null> => {
     try {
-      // The portal provides a download endpoint; fetch it as a blob and open in a new tab
       const res = await fetchWithAuth(`/api/fhir/portal/documents/${docId}/download`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const errorMsg = res.status === 404
+          ? "Document not found. It may have been removed or is not yet available."
+          : `Failed to load document (HTTP ${res.status})`;
+        throw new Error(errorMsg);
+      }
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
-      // Open in new tab (browser will render PDFs/images if supported)
       window.open(url, '_blank');
-      // Revoke after a short timeout to allow the new tab to load
       setTimeout(() => window.URL.revokeObjectURL(url), 10000);
       return url;
     } catch (e) {
       console.error("View error:", e);
+      const message = e instanceof Error ? e.message : "Could not open document. Please try again later.";
+      if (typeof window !== 'undefined') {
+        window.alert(message);
+      }
       return null;
     }
   };

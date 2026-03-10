@@ -191,7 +191,9 @@ export default function InsurancePage() {
                 secondaryMedicareType: level === "secondary" ? policy.secondaryMedicareType : "N/A",
             };
             const method = coverageId ? "PUT" : "POST";
-            const url = coverageId ? `${getEnv("NEXT_PUBLIC_API_URL")}/api/coverages/${coverageId}` : `${getEnv("NEXT_PUBLIC_API_URL")}/api/coverages`;
+            const url = coverageId
+                ? `${getEnv("NEXT_PUBLIC_API_URL")}/api/portal/insurance/${coverageId}`
+                : `${getEnv("NEXT_PUBLIC_API_URL")}/api/portal/insurance`;
             const response = await fetchWithAuth(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(coverageData) });
             if (!response.ok) { const errorText = await response.text(); throw new Error(`Failed to ${coverageId ? "update" : "create"} coverage: ${errorText}`); }
             const result = await response.json();

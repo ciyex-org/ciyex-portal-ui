@@ -92,7 +92,10 @@ export default function MessagesPage() {
 
     /* load channels */
     useEffect(() => {
-        if (!currentUserId) return;
+        if (!currentUserId) {
+            setLoadingChannels(false);
+            return;
+        }
         (async () => {
             const data = await api<Channel[]>("/api/channels");
             const list = Array.isArray(data) ? data : [];

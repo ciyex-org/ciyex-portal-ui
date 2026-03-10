@@ -95,8 +95,11 @@ export default function Dashboard() {
             const res = await fetchWithAuth("/api/fhir/vitals/my");
             if (!res.ok) return;
             const d = await res.json();
-            if (!d.success || !d.data?.length) return;
-            const latest = d.data[0];
+            if (!d.success || !d.data) return;
+            // Handle both array and paginated { content: [...] } formats
+            const dataList = Array.isArray(d.data) ? d.data : (d.data?.content || []);
+            if (!dataList.length) return;
+            const latest = dataList[0];
             const out: VitalReading[] = [];
             if (latest.bpSystolic && latest.bpDiastolic)
                 out.push({ type: "Blood Pressure", value: `${latest.bpSystolic}/${latest.bpDiastolic}`, unit: "mmHg", date: latest.recordedAt || "" });

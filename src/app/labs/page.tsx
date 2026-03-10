@@ -50,14 +50,14 @@ export default function LabsPage() {
             const raw: any[] = Array.isArray(data.data) ? data.data : (data.data?.content || []);
             setLabs(raw.map((item: any) => ({
                 id: item.id,
-                testName: item.testName || item.testDisplay || item.orderName || item.name || item.testCode || "Lab Order",
-                orderedDate: item.orderDate || item.orderDateTime || item.effectiveDate || item.orderedDate || item.issued || item._lastUpdated || "",
-                collectionDate: item.collectedDate || item.collectionDate || item.specimenCollectedDate || undefined,
-                resultDate: item.reportedDate || item.resultDate || item.resultDateTime || item.signedAt || undefined,
+                testName: item.testName || item.testDisplay || item.orderName || item.test_name || item.name || item.testCode || "Lab Order",
+                orderedDate: item.orderDate || item.orderDateTime || item.effectiveDate || item.orderedDate || item.ordered_date || item.issued || item._lastUpdated || "",
+                collectionDate: item.collectedDate || item.collectionDate || item.collection_date || item.specimenCollectedDate || undefined,
+                resultDate: item.reportedDate || item.resultDate || item.result_date || item.resultDateTime || item.signedAt || undefined,
                 status: item.status || "unknown",
-                result: item.conclusion || item.result || undefined,
-                details: item.details || undefined,
-                providerName: item.physicianName || item.orderingProvider || item.performer || item.providerName || item.providerDisplay || undefined,
+                result: item.conclusion || item.result || item.resultValue || undefined,
+                details: item.details || item.resultDetails || item.notes || undefined,
+                providerName: item.physicianName || item.orderingProvider || item.performer || item.providerName || item.provider_name || item.providerDisplay || undefined,
             })));
         } catch (err) {
             setError(err instanceof Error ? err.message : "Could not load lab orders");
@@ -123,11 +123,9 @@ export default function LabsPage() {
                                             <td className="px-4 py-3">{statusBadge(lab.status)}</td>
                                             <td className="px-4 py-3 text-sm text-gray-700">{lab.result || "—"}</td>
                                             <td className="px-4 py-3">
-                                                {(lab.status?.toLowerCase() === "completed" || lab.status?.toLowerCase() === "resulted") && lab.details && (
-                                                    <button onClick={() => setViewer(lab)} className="text-blue-600 hover:text-blue-800 transition-colors">
-                                                        <Eye className="h-4 w-4" />
-                                                    </button>
-                                                )}
+                                                <button onClick={() => setViewer(lab)} className="text-blue-600 hover:text-blue-800 transition-colors" title="View Details">
+                                                    <Eye className="h-4 w-4" />
+                                                </button>
                                             </td>
                                         </tr>
                                     ))}

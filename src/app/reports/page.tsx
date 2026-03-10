@@ -102,7 +102,6 @@ export default function ReportsPage() {
                                                 <td className="px-4 py-3">{categoryBadge(report.category)}</td>
                                                 <td className="px-4 py-3">
                                                     <span className="text-sm text-gray-700">{fmtDate(report.createdDate)}</span>
-                                                    {report.type && <div className="text-xs text-gray-400">{report.type}</div>}
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     {report.encrypted ? (
@@ -116,7 +115,7 @@ export default function ReportsPage() {
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-2">
                                                         <button
-                                                            onClick={async () => { const url = await viewDocument(report.id); if (url) window.open(url, "_blank"); }}
+                                                            onClick={() => viewDocument(report.id)}
                                                             className="p-1 text-blue-600 hover:text-blue-800 transition-colors" title="View"
                                                         ><Eye className="h-4 w-4" /></button>
                                                         <button

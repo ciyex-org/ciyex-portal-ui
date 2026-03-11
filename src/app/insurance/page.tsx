@@ -286,9 +286,9 @@ export default function InsurancePage() {
                     <div className="p-5">
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                             <ReadField label="Insurance Provider" value={
-                                coverages.find((c: any) => (c.insuranceType?.toLowerCase() === level || c.coverageType?.toLowerCase() === level))?.payerName
+                                (coverages as any[]).find((c) => (c.insuranceType?.toLowerCase() === level || c.coverageType?.toLowerCase() === level))?.payerName
                                 || companies.find((c) => c.id === p.providerId)?.name
-                                || coverages.find((c: any) => (c.insuranceType?.toLowerCase() === level || c.coverageType?.toLowerCase() === level))?.insuranceCompany?.name
+                                || (coverages as any[]).find((c) => (c.insuranceType?.toLowerCase() === level || c.coverageType?.toLowerCase() === level))?.insuranceCompany?.name
                             } />
                             <ReadField label="Plan Name" value={p.planName} />
                             <ReadField label="Member ID" value={p.policyNumber} />

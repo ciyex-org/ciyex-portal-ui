@@ -84,9 +84,11 @@ export default function MessagesPage() {
     useEffect(() => {
         const user = localStorage.getItem("user");
         if (user) {
-            const u = JSON.parse(user);
-            setCurrentUserId(u.sub || u.id || "");
-            setCurrentUserName(u.name || u.firstName || "Patient");
+            try {
+                const u = JSON.parse(user);
+                setCurrentUserId(u.sub || u.id || u.userId || u.email || u.username || "");
+                setCurrentUserName(u.name || u.firstName || [u.given_name, u.family_name].filter(Boolean).join(" ") || u.preferred_username || "Patient");
+            } catch { /* ignore parse errors */ }
         }
     }, []);
 

@@ -1,4 +1,3 @@
-import { getEnv } from "@/utils/env";
 import { useState, useEffect, useCallback } from 'react';
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
 
@@ -37,11 +36,12 @@ export function useNotifications() {
       const allNotifications: Notification[] = [];
       
       // Load messages
-      const messagesRes = await fetchWithAuth(`${getEnv("NEXT_PUBLIC_API_URL")}/api/portal/communications/my`);
+      const messagesRes = await fetchWithAuth("/api/portal/communications/my");
       if (messagesRes.ok) {
         const data = await messagesRes.json();
-        if (data.success && Array.isArray(data.data)) {
-          const messageNotifications = data.data.map((comm: CommunicationDto) => ({
+        const msgList = Array.isArray(data.data) ? data.data : (data.data?.content || []);
+        if (msgList.length > 0) {
+          const messageNotifications = msgList.map((comm: CommunicationDto) => ({
             id: comm.id,
             type: 'message' as const,
             title: `New message from ${comm.fromName || 'Provider'}`,
@@ -56,11 +56,15 @@ export function useNotifications() {
       }
       
       // Load appointments (upcoming)
-      const appointmentsRes = await fetchWithAuth(`${getEnv("NEXT_PUBLIC_API_URL")}/api/portal/appointments`);
+      const appointmentsRes = await fetchWithAuth("/api/portal/appointments");
       if (appointmentsRes.ok) {
         const data = await appointmentsRes.json();
-        if (data.success && Array.isArray(data.data)) {
-          const upcoming = data.data.filter((apt: any) => new Date(apt.appointmentDateTime) > new Date());
+        const apptList = Array.isArray(data.data) ? data.data : (data.data?.content || []);
+        if (apptList.length > 0) {
+          const upcoming = apptList.filter((apt: any) => {
+            const dt = apt.appointmentDateTime || apt.appointmentStartDate || apt.start;
+            return dt && new Date(dt) > new Date();
+          });
           const appointmentNotifications = upcoming.slice(0, 3).map((apt: any, index: number) => ({
             id: `apt-${apt.id}`,
             type: 'appointment' as const,

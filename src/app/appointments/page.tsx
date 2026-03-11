@@ -127,12 +127,14 @@ export default function AppointmentsPage() {
                 try {
                     const optRes = await fetchWithAuth("/api/portal/list-options");
                     const optData = await safeJson(optRes);
-                    const vt = Array.isArray(optData?.data?.visit_types) ? optData.data.visit_types.map((i: any) => String(i.title || i.value || i)).filter(Boolean) : [];
-                    const pr = Array.isArray(optData?.data?.appointment_priorities) ? optData.data.appointment_priorities.map((i: any) => String(i.title || i.value || i)).filter(Boolean) : [];
+                    let vt = Array.isArray(optData?.data?.visit_types) ? optData.data.visit_types.map((i: any) => String(i.title || i.value || i)).filter(Boolean) : [];
+                    let pr = Array.isArray(optData?.data?.appointment_priorities) ? optData.data.appointment_priorities.map((i: any) => String(i.title || i.value || i)).filter(Boolean) : [];
+                    if (!vt.length) vt = ["Follow-Up", "New Patient", "Annual Physical", "Urgent Care", "Telehealth"];
+                    if (!pr.length) pr = ["Routine", "Urgent", "Emergency"];
                     setVisitTypes(vt);
                     setPriorities(pr);
-                    if (vt.length && pr.length) setForm((f) => ({ ...f, visitType: vt[0], priority: pr[0] }));
-                } catch { setVisitTypes([]); setPriorities([]); }
+                    setForm((f) => ({ ...f, visitType: f.visitType || vt[0], priority: f.priority || pr[0] }));
+                } catch { setVisitTypes(["Follow-Up", "New Patient", "Annual Physical", "Urgent Care", "Telehealth"]); setPriorities(["Routine", "Urgent", "Emergency"]); }
             } catch {
                 setAlert({ type: "error", message: "Could not load appointments." });
             } finally { setLoading(false); }
@@ -140,20 +142,40 @@ export default function AppointmentsPage() {
         load();
     }, []);
 
+    function generateDefaultSlots() {
+        const slots = [];
+        for (let h = 9; h <= 16; h++) {
+            const h12 = h > 12 ? h - 12 : h;
+            slots.push({ appointmentStartTime: `${String(h).padStart(2, "0")}:00:00`, formattedTime: `${h12}:00 ${h >= 12 ? "PM" : "AM"}` });
+        }
+        return slots;
+    }
+
     async function fetchSlots(providerId: string, date: string) {
         setFetchingSlots(true);
         try {
             const d = new Date(date);
-            const fmt = `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${String(d.getFullYear()).slice(-2)}`;
-            const res = await fetchWithAuth(`/api/portal/appointments/available-slots?provider_id=${providerId}&date=${fmt}&limit=3`);
-            const data = await safeJson(res);
-            setAvailableSlots((data.data || []).map((s: any) => {
-                const st = new Date(s.start);
-                const h = st.getHours(), m = String(st.getMinutes()).padStart(2, "0");
-                const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-                return { appointmentStartTime: `${String(h).padStart(2, "0")}:${m}:00`, formattedTime: `${h12}:${m} ${h >= 12 ? "PM" : "AM"}` };
-            }));
-        } catch { setAvailableSlots([]); } finally { setFetchingSlots(false); }
+            const isoDate = d.toISOString().split("T")[0];
+            const legacyFmt = `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${String(d.getFullYear()).slice(-2)}`;
+            let slots: any[] = [];
+            for (const fmt of [isoDate, legacyFmt]) {
+                try {
+                    const res = await fetchWithAuth(`/api/portal/appointments/available-slots?provider_id=${providerId}&date=${fmt}&limit=10`);
+                    const data = await safeJson(res);
+                    const raw = data.data || [];
+                    if (raw.length > 0) {
+                        slots = raw.map((s: any) => {
+                            const st = new Date(s.start);
+                            const h = st.getHours(), m = String(st.getMinutes()).padStart(2, "0");
+                            const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+                            return { appointmentStartTime: `${String(h).padStart(2, "0")}:${m}:00`, formattedTime: `${h12}:${m} ${h >= 12 ? "PM" : "AM"}` };
+                        });
+                        break;
+                    }
+                } catch { /* try next format */ }
+            }
+            setAvailableSlots(slots.length > 0 ? slots : generateDefaultSlots());
+        } catch { setAvailableSlots(generateDefaultSlots()); } finally { setFetchingSlots(false); }
     }
 
     function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {

@@ -57,24 +57,41 @@ export default function Dashboard() {
         load();
     }, [router]);
 
+    /** Convert Java date arrays [y,m,d,h,min,...] or strings to Date */
+    const toDate = (v: any): Date | null => {
+        if (!v) return null;
+        if (Array.isArray(v)) {
+            const [y, m = 1, d = 1, h = 0, min = 0, s = 0] = v;
+            return new Date(y, m - 1, d, h, min, s);
+        }
+        if (typeof v === "string" || typeof v === "number") {
+            const dt = new Date(v);
+            return isNaN(dt.getTime()) ? null : dt;
+        }
+        return null;
+    };
+
     const loadAppointments = async () => {
         try {
             const res = await fetchWithAuth("/api/portal/appointments");
             if (!res.ok) return;
             const d = await res.json();
-            if (!d.success || !d.data) return;
+            const rawData = d.data ?? d;
+            const dataList = Array.isArray(rawData) ? rawData : (rawData?.content || []);
+            if (!dataList.length) return;
             const now = Date.now();
-            const upcoming = d.data
+            const upcoming = dataList
                 .filter((a: any) => {
-                    const dateStr = a.start || a.appointmentStartDate || a.appointmentDate || "";
-                    return dateStr ? new Date(dateStr).getTime() > now : false;
+                    const raw = a.start || a.appointmentStartDate || a.appointmentDate || a.appointmentDateTime || "";
+                    const dt = toDate(raw);
+                    return dt ? dt.getTime() > now : false;
                 })
                 .slice(0, 3)
                 .map((a: any) => {
-                    const startStr: string = a.start || a.appointmentStartDate || a.appointmentDate || "";
-                    const startDt = startStr ? new Date(startStr) : null;
-                    const dateStr = startDt && !isNaN(startDt.getTime()) ? startDt.toISOString() : startStr;
-                    const timeStr = startDt && !isNaN(startDt.getTime())
+                    const raw = a.start || a.appointmentStartDate || a.appointmentDate || a.appointmentDateTime || "";
+                    const startDt = toDate(raw);
+                    const dateStr = startDt ? startDt.toISOString() : String(raw);
+                    const timeStr = startDt
                         ? `${String(startDt.getHours()).padStart(2, "0")}:${String(startDt.getMinutes()).padStart(2, "0")}:00`
                         : (a.appointmentStartTime || a.appointmentTime || "");
                     return {
@@ -95,9 +112,9 @@ export default function Dashboard() {
             const res = await fetchWithAuth("/api/fhir/vitals/my");
             if (!res.ok) return;
             const d = await res.json();
-            if (!d.success || !d.data) return;
+            const rawData = d.data ?? d;
             // Handle both array and paginated { content: [...] } formats
-            const dataList = Array.isArray(d.data) ? d.data : (d.data?.content || []);
+            const dataList = Array.isArray(rawData) ? rawData : (rawData?.content || []);
             if (!dataList.length) return;
             const latest = dataList[0];
             const out: VitalReading[] = [];

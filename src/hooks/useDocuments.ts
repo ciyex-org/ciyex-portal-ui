@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
 
 export type ApiDocument = {
@@ -20,7 +20,7 @@ export function useDocuments() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadDocuments = async () => {
+  const loadDocuments = useCallback(async () => {
     try {
       const res = await fetchWithAuth("/api/fhir/portal/documents/my");
       if (res.ok) {
@@ -53,7 +53,7 @@ export function useDocuments() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const downloadDocument = async (docId: number) => {
     try {

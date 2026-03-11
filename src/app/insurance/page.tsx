@@ -1,6 +1,5 @@
 "use client";
 
-import { getEnv } from "@/utils/env";
 import { useEffect, useState } from "react";
 import AdminLayout from "@/app/(admin)/layout";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
@@ -82,7 +81,7 @@ export default function InsurancePage() {
     useEffect(() => {
         async function loadCompanies() {
             try {
-                const res = await fetchWithAuth(`${getEnv("NEXT_PUBLIC_API_URL")}/api/insurance-companies`);
+                const res = await fetchWithAuth("/api/insurance-companies");
                 const data = await res.json();
                 setCompanies(data.data ?? data ?? []);
             } catch { /* ignore */ }
@@ -93,7 +92,7 @@ export default function InsurancePage() {
     useEffect(() => {
         async function loadProfile() {
             try {
-                const res = await fetchWithAuth(`${getEnv("NEXT_PUBLIC_API_URL")}/api/portal/patient/me`);
+                const res = await fetchWithAuth("/api/portal/patient/me");
                 if (!res.ok) return;
                 const data = await res.json();
                 if (data?.data) {
@@ -159,12 +158,12 @@ export default function InsurancePage() {
             if (policy.cardFrontFile) {
                 const fd = new FormData();
                 fd.append("file", policy.cardFrontFile);
-                await fetchWithAuth(`${getEnv("NEXT_PUBLIC_API_URL")}/api/coverages/${coverageId}/card/front`, { method: "POST", body: fd });
+                await fetchWithAuth(`/api/coverages/${coverageId}/card/front`, { method: "POST", body: fd });
             }
             if (policy.cardBackFile) {
                 const fd = new FormData();
                 fd.append("file", policy.cardBackFile);
-                await fetchWithAuth(`${getEnv("NEXT_PUBLIC_API_URL")}/api/coverages/${coverageId}/card/back`, { method: "POST", body: fd });
+                await fetchWithAuth(`/api/coverages/${coverageId}/card/back`, { method: "POST", body: fd });
             }
         } catch { /* card upload failures don't block save */ }
     };
@@ -192,8 +191,8 @@ export default function InsurancePage() {
             };
             const method = coverageId ? "PUT" : "POST";
             const url = coverageId
-                ? `${getEnv("NEXT_PUBLIC_API_URL")}/api/portal/insurance/${coverageId}`
-                : `${getEnv("NEXT_PUBLIC_API_URL")}/api/portal/insurance`;
+                ? `/api/portal/insurance/${coverageId}`
+                : "/api/portal/insurance";
             const response = await fetchWithAuth(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(coverageData) });
             if (!response.ok) { const errorText = await response.text(); throw new Error(`Failed to ${coverageId ? "update" : "create"} coverage: ${errorText}`); }
             const result = await response.json();
@@ -213,7 +212,7 @@ export default function InsurancePage() {
         if (!coverageId) { setAlert({ type: "warning", message: `No ${level} insurance found to archive.` }); return; }
         if (!window.confirm(`Are you sure you want to archive your ${level} insurance coverage?`)) return;
         try {
-            const response = await fetchWithAuth(`${getEnv("NEXT_PUBLIC_API_URL")}/api/coverages/${coverageId}/archive`, { method: "PUT" });
+            const response = await fetchWithAuth(`/api/coverages/${coverageId}/archive`, { method: "PUT" });
             if (!response.ok) throw new Error(`Failed to archive coverage: ${response.statusText}`);
             setPolicies((prev) => ({ ...prev, [level]: { ...initialPolicy } }));
             setCoverageIds((prev) => ({ ...prev, [level]: null }));
@@ -242,7 +241,7 @@ export default function InsurancePage() {
             setAlert({ type: "error", message: "Please fill in all required fields." }); return;
         }
         try {
-            const response = await fetchWithAuth(`${getEnv("NEXT_PUBLIC_API_URL")}/api/insurance-companies`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newCompany) });
+            const response = await fetchWithAuth("/api/insurance-companies", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newCompany) });
             if (!response.ok) throw new Error("Failed to add insurance company");
             const result = await response.json();
             const addedCompany = result.data || result;
@@ -285,7 +284,7 @@ export default function InsurancePage() {
                 {isConfigured ? (
                     <div className="p-5">
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-                            <ReadField label="Insurance Provider" value={companies.find((c) => c.id === p.providerId)?.name} />
+                            <ReadField label="Insurance Provider" value={companies.find((c) => c.id === p.providerId)?.name || coverages.find((c: any) => c.coverageType?.toLowerCase() === level)?.insuranceCompany?.name} />
                             <ReadField label="Plan Name" value={p.planName} />
                             <ReadField label="Member ID" value={p.policyNumber} />
                             <ReadField label="Group Number" value={p.groupNumber} />

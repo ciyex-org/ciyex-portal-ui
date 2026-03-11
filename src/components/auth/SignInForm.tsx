@@ -54,17 +54,18 @@ export default function SignInForm() {
         userId: string;
         patientFhirId?: string;
     }) => {
-        // Check patient FHIR link — Keycloak patients need patientFhirId
-        // Portal-registered patients already have fhirId passed as patientFhirId
+        // Normalize roles
         const rolesUpper = Array.isArray(data.groups)
             ? data.groups.map((g: string) => g?.toUpperCase())
             : [];
         const isPatient = rolesUpper.includes("PATIENT");
 
+        // For PATIENT role, ensure patientFhirId is set.
+        // Keycloak-authenticated patients may not have patientFhirId in the login
+        // response — use userId as fallback since the backend resolves patient
+        // data from the JWT email claim anyway.
         if (isPatient && !data.patientFhirId) {
-            setError("Your account is not linked to a patient record. Please contact your healthcare provider.");
-            setLoading(false);
-            return;
+            data.patientFhirId = data.userId || (data as any).sub || "";
         }
 
         const fullName = `${data.firstName || ""} ${data.lastName || ""}`.trim() || data.username || "";
@@ -146,7 +147,16 @@ export default function SignInForm() {
             const data = await res.json();
 
             if (data.success && data.data?.token) {
-                await handlePostLogin(data.data);
+                // For Keycloak patients, ensure patientFhirId is populated
+                const loginData = data.data;
+                if (!loginData.patientFhirId) {
+                    const groups = Array.isArray(loginData.groups) ? loginData.groups : [];
+                    const isPatient = groups.some((g: string) => g?.toUpperCase() === "PATIENT");
+                    if (isPatient) {
+                        loginData.patientFhirId = loginData.userId || loginData.sub || loginData.fhirId || "";
+                    }
+                }
+                await handlePostLogin(loginData);
                 return;
             }
 

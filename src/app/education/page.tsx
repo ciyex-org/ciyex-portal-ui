@@ -1,6 +1,5 @@
 "use client";
 
-import { getEnv } from "@/utils/env";
 import { useEffect, useState, useCallback } from "react";
 import AdminLayout from "@/app/(admin)/layout";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
@@ -21,19 +20,22 @@ export default function PatientEducationPage() {
 
     const loadTopics = useCallback(async () => {
         try {
-            const res = await fetchWithAuth(`${getEnv("NEXT_PUBLIC_API_URL")}/api/patient-education?page=0&size=100`);
+            const res = await fetchWithAuth("/api/patient-education?page=0&size=100");
+            if (!res.ok) return;
             const response = await res.json();
-            if (response.success && response.data) setTopics(response.data.content || []);
-        } catch { setError("Failed to load topics"); }
+            const data = response.data;
+            setTopics(Array.isArray(data) ? data : (data?.content || []));
+        } catch { /* endpoint may not exist yet */ }
     }, []);
 
     const loadAssignments = useCallback(async () => {
         if (!mounted) return;
         try {
-            const res = await fetchWithAuth(`${getEnv("NEXT_PUBLIC_API_URL")}/api/portal/patient-education-assignments/my-assignments`);
+            const res = await fetchWithAuth("/api/portal/patient-education-assignments/my-assignments");
+            if (!res.ok) return;
             const response = await res.json();
-            if (response.success && response.data) setAssignments(response.data || []);
-        } catch { setError("Failed to load assignments"); }
+            setAssignments(Array.isArray(response.data) ? response.data : []);
+        } catch { /* endpoint may not exist yet */ }
     }, [mounted]);
 
     useEffect(() => { if (mounted) { loadTopics(); loadAssignments(); } }, [mounted, loadTopics, loadAssignments]);

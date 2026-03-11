@@ -3,7 +3,6 @@ import { fetchWithAuth } from "@/utils/fetchWithAuth";
 
 export type ApiDocument = {
   id: number;
-  fhirId?: string;
   patientId: number;
   category: string;
   type: string;
@@ -29,7 +28,6 @@ export function useDocuments() {
         const rawList = Array.isArray(data.data) ? data.data : (data.data?.content || []);
         const mapped = rawList.map((item: any) => ({
           id: item.id,
-          fhirId: item.fhirId ?? item.fhir_id ?? undefined,
           patientId: item.patientId ?? item.patientid,
           category: item.category || 'Medical Records',
           type: item.type,
@@ -59,9 +57,7 @@ export function useDocuments() {
 
   const downloadDocument = async (docId: number) => {
     try {
-      const doc = documents.find(d => d.id === docId);
-      const lookupId = doc?.fhirId || docId;
-      const res = await fetchWithAuth(`/api/fhir/portal/documents/${lookupId}/download`);
+      const res = await fetchWithAuth(`/api/fhir/portal/documents/${docId}/download`);
       
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       
@@ -84,9 +80,7 @@ export function useDocuments() {
 
   const viewDocument = async (docId: number): Promise<string | null> => {
     try {
-      const doc = documents.find(d => d.id === docId);
-      const lookupId = doc?.fhirId || docId;
-      const res = await fetchWithAuth(`/api/fhir/portal/documents/${lookupId}/download`);
+      const res = await fetchWithAuth(`/api/fhir/portal/documents/${docId}/download`);
       if (!res.ok) {
         const errorMsg = res.status === 404
           ? "Document not found. It may have been removed or is not yet available."
@@ -110,9 +104,7 @@ export function useDocuments() {
 
   const deleteDocument = async (docId: number) => {
     try {
-      const doc = documents.find(d => d.id === docId);
-      const lookupId = doc?.fhirId || docId;
-      const res = await fetchWithAuth(`/api/fhir/portal/documents/${lookupId}`, {
+      const res = await fetchWithAuth(`/api/fhir/portal/documents/${docId}`, {
         method: 'DELETE',
       });
       
@@ -132,9 +124,7 @@ export function useDocuments() {
       // Try portal delete/archive endpoint first
       // Call portal endpoint with DELETE if present — but never perform hard delete locally.
       try {
-        const archiveDoc = documents.find(d => d.id === docId);
-        const archiveLookupId = archiveDoc?.fhirId || docId;
-        const res = await fetchWithAuth(`/api/fhir/portal/documents/${archiveLookupId}`, { method: 'DELETE' });
+        const res = await fetchWithAuth(`/api/fhir/portal/documents/${docId}`, { method: 'DELETE' });
         if (res.ok) {
           setDocuments(prev => prev.map(d => d.id === docId ? { ...d, archived: true } : d));
           return true;

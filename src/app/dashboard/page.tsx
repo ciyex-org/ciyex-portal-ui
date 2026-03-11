@@ -80,12 +80,24 @@ export default function Dashboard() {
             const dataList = Array.isArray(rawData) ? rawData : (rawData?.content || []);
             if (!dataList.length) return;
             const now = Date.now();
-            const upcoming = dataList
-                .filter((a: any) => {
+            const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+            // Show future appointments first, then recent past (last 7 days) as fallback
+            const withDates = dataList
+                .map((a: any) => {
                     const raw = a.start || a.appointmentStartDate || a.appointmentDate || a.appointmentDateTime || "";
-                    const dt = toDate(raw);
-                    return dt ? dt.getTime() > now : false;
+                    return { ...a, _dt: toDate(raw) };
                 })
+                .filter((a: any) => a._dt && a._dt.getTime() > sevenDaysAgo);
+            // Sort: future first (ascending), then past (descending)
+            withDates.sort((a: any, b: any) => {
+                const aFuture = a._dt.getTime() > now;
+                const bFuture = b._dt.getTime() > now;
+                if (aFuture && !bFuture) return -1;
+                if (!aFuture && bFuture) return 1;
+                if (aFuture && bFuture) return a._dt.getTime() - b._dt.getTime();
+                return b._dt.getTime() - a._dt.getTime();
+            });
+            const upcoming = withDates
                 .slice(0, 3)
                 .map((a: any) => {
                     const raw = a.start || a.appointmentStartDate || a.appointmentDate || a.appointmentDateTime || "";

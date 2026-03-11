@@ -33,7 +33,16 @@ export default function PatientTelehealthPage() {
                     throw new Error("Your provider has not started the video call yet. Please wait and try again.");
                 }
                 const text = await res.text();
-                throw new Error(text || "Failed to join session");
+                // Parse backend error message for user-friendly display
+                let msg = "Failed to join session";
+                try {
+                    const errJson = JSON.parse(text);
+                    msg = errJson.message || msg;
+                } catch { msg = text || msg; }
+                if (msg.includes("Telehealth service call failed") || msg.includes("404")) {
+                    throw new Error("The telehealth service is currently unavailable. Please contact your provider or try again later.");
+                }
+                throw new Error(msg);
             }
 
             const json = await res.json();

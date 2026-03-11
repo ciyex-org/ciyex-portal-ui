@@ -112,7 +112,7 @@ export default function InsurancePage() {
             const existingPolicies: Record<Level, InsurancePolicy> = { primary: { ...initialPolicy }, secondary: { ...initialPolicy }, tertiary: { ...initialPolicy } };
             const existingIds: CoverageIds = { primary: null, secondary: null, tertiary: null };
             coverages.forEach((coverage: CoverageResponse) => {
-                const level = coverage.coverageType?.toLowerCase() as Level;
+                const level = (coverage.coverageType?.toLowerCase() || (coverage as any).insuranceType?.toLowerCase()) as Level;
                 if (level && existingPolicies[level]) {
                     existingPolicies[level] = {
                         ...existingPolicies[level], providerId: coverage.insuranceCompany?.id || null,
@@ -268,7 +268,8 @@ export default function InsurancePage() {
 
     const renderCard = (level: Level, title: string) => {
         const p = policies[level];
-        const isConfigured = p.providerId && p.planName;
+        const hasCoverage = coverageIds[level] !== null;
+        const isConfigured = hasCoverage || (p.providerId && p.planName);
         const colors = levelColors[level];
 
         if (editLevel === level) return renderForm(level, title);
@@ -284,7 +285,11 @@ export default function InsurancePage() {
                 {isConfigured ? (
                     <div className="p-5">
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-                            <ReadField label="Insurance Provider" value={companies.find((c) => c.id === p.providerId)?.name || coverages.find((c: any) => c.coverageType?.toLowerCase() === level)?.insuranceCompany?.name} />
+                            <ReadField label="Insurance Provider" value={
+                                coverages.find((c: any) => (c.insuranceType?.toLowerCase() === level || c.coverageType?.toLowerCase() === level))?.payerName
+                                || companies.find((c) => c.id === p.providerId)?.name
+                                || coverages.find((c: any) => (c.insuranceType?.toLowerCase() === level || c.coverageType?.toLowerCase() === level))?.insuranceCompany?.name
+                            } />
                             <ReadField label="Plan Name" value={p.planName} />
                             <ReadField label="Member ID" value={p.policyNumber} />
                             <ReadField label="Group Number" value={p.groupNumber} />

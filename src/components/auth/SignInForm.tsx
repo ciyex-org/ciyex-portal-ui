@@ -80,6 +80,13 @@ export default function SignInForm() {
         localStorage.setItem("user", JSON.stringify(data));
         if (data.patientFhirId) localStorage.setItem("patientFhirId", data.patientFhirId);
 
+        // Extract and store orgAlias from JWT or login data
+        try {
+            const payload = JSON.parse(atob(data.token.split(".")[1]));
+            const org = Array.isArray(payload.organization) ? payload.organization[0] : (payload.organization || payload.org_alias || "");
+            if (org) localStorage.setItem("orgAlias", org);
+        } catch { /* ignore JWT parse errors */ }
+
         if (data.groups && data.groups.length > 0) {
             const systemGroups = ['offline_access', 'uma_authorization', 'default-roles-ciyex', 'default-roles-master'];
             const meaningful = data.groups.find((g: string) => !systemGroups.includes(g.toLowerCase()));

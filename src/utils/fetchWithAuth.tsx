@@ -22,7 +22,9 @@ export async function fetchWithAuth(
     throw new Error("Auth token missing");
   }
 
-  const orgAlias = getEnv("NEXT_PUBLIC_ORG_ALIAS");
+  const orgAlias = getEnv("NEXT_PUBLIC_ORG_ALIAS")
+    || (typeof window !== "undefined" ? localStorage.getItem("orgAlias") : null)
+    || "";
   const authHeaders: Record<string, string> = {
     "Accept": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),

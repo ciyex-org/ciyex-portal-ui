@@ -6,7 +6,7 @@ import { fetchWithAuth } from "@/utils/fetchWithAuth";
 import { BookOpen, AlertCircle, X, Globe, CheckCircle2 } from "lucide-react";
 
 type Topic = { id: string; title: string; summary: string; category: string; language: string; readingLevel: string; content: string; fhirId?: string };
-type Assignment = { id: string; patientId: string; patientName: string; notes: string; delivered: boolean; assignedDate: string; topic: Topic };
+type Assignment = { id: string; patientId: string; patientName: string; notes: string; delivered: boolean; assignedDate: string; status: string; topic: Topic };
 
 export default function PatientEducationPage() {
     const [mounted, setMounted] = useState(false);
@@ -24,7 +24,19 @@ export default function PatientEducationPage() {
             if (!res.ok) return;
             const response = await res.json();
             const data = response.data;
-            setTopics(Array.isArray(data) ? data : (data?.content || []));
+            const rawTopics: any[] = Array.isArray(data) ? data : (data?.content || []);
+            // Map EducationMaterialDto to Topic format
+            const mapped = rawTopics.map((m: any) => ({
+                id: String(m.id),
+                title: m.title || "Education Material",
+                summary: m.content ? m.content.replace(/<[^>]*>/g, "").substring(0, 200) : "",
+                category: m.category || "",
+                language: m.language || "en",
+                readingLevel: m.audience || "",
+                content: m.content || "",
+                fhirId: m.fhirId,
+            }));
+            setTopics(mapped);
         } catch { /* endpoint may not exist yet */ }
     }, []);
 
@@ -34,7 +46,27 @@ export default function PatientEducationPage() {
             const res = await fetchWithAuth("/api/portal/patient-education-assignments/my-assignments");
             if (!res.ok) return;
             const response = await res.json();
-            setAssignments(Array.isArray(response.data) ? response.data : []);
+            const rawAssignments: any[] = Array.isArray(response.data) ? response.data : [];
+            // Map flat backend DTO to expected structure with nested topic
+            const mapped = rawAssignments.map((a: any) => ({
+                id: String(a.id),
+                patientId: String(a.patientId),
+                patientName: a.patientName || "",
+                notes: a.notes || "",
+                delivered: a.status === "viewed" || a.status === "completed",
+                assignedDate: a.assignedDate || "",
+                status: a.status || "assigned",
+                topic: a.topic || {
+                    id: String(a.materialId || a.id),
+                    title: a.materialTitle || "Education Material",
+                    summary: a.notes || "",
+                    category: a.materialCategory || "",
+                    language: "en",
+                    readingLevel: "",
+                    content: a.content || "",
+                },
+            }));
+            setAssignments(mapped);
         } catch { /* endpoint may not exist yet */ }
     }, [mounted]);
 

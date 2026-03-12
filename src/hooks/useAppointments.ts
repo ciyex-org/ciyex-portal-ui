@@ -26,10 +26,12 @@ export function useAppointments() {
   useEffect(() => {
     const loadAppointments = async () => {
       try {
-        const res = await fetchWithAuth("/api/portal/appointments/my");
+        const res = await fetchWithAuth("/api/portal/appointments");
         if (res.ok) {
           const data = await res.json();
-          setAppointments(data.data || []);
+          const rawData = data.data ?? data;
+          const list = Array.isArray(rawData) ? rawData : (rawData?.content || []);
+          setAppointments(list);
         } else if (res.status === 403) {
           // Forbidden - set empty list and suppress error for UI continuity
           setAppointments([]);

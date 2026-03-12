@@ -123,8 +123,9 @@ export default function LabsPage() {
                                             <td className="px-4 py-3">{statusBadge(lab.status)}</td>
                                             <td className="px-4 py-3 text-sm text-gray-700">{lab.result || "—"}</td>
                                             <td className="px-4 py-3">
-                                                <button onClick={() => setViewer(lab)} className="text-blue-600 hover:text-blue-800 transition-colors" title="View Details">
+                                                <button onClick={() => setViewer(lab)} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors" title="View Details">
                                                     <Eye className="h-4 w-4" />
+                                                    <span>View</span>
                                                 </button>
                                             </td>
                                         </tr>

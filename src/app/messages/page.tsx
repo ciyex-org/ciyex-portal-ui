@@ -99,15 +99,20 @@ export default function MessagesPage() {
             return;
         }
         (async () => {
-            const data = await api<Channel[]>("/api/channels");
-            const list = Array.isArray(data) ? data : [];
-            // portal: only show DM conversations; normalize dates
-            setChannels(list.filter((c) => c.type === "dm" || c.type === "group_dm").map((c: any) => ({
-                ...c,
-                createdAt: normDate(c.createdAt),
-                lastMessage: c.lastMessage ? { ...c.lastMessage, createdAt: normDate(c.lastMessage.createdAt) } : c.lastMessage,
-            })));
-            setLoadingChannels(false);
+            try {
+                const data = await api<Channel[]>("/api/channels");
+                const list = Array.isArray(data) ? data : [];
+                // portal: only show DM conversations; normalize dates
+                setChannels(list.filter((c) => c.type === "dm" || c.type === "group_dm").map((c: any) => ({
+                    ...c,
+                    createdAt: normDate(c.createdAt),
+                    lastMessage: c.lastMessage ? { ...c.lastMessage, createdAt: normDate(c.lastMessage.createdAt) } : c.lastMessage,
+                })));
+            } catch (e) {
+                console.error("Failed to load channels:", e);
+            } finally {
+                setLoadingChannels(false);
+            }
         })();
     }, [currentUserId]);
 
@@ -116,12 +121,17 @@ export default function MessagesPage() {
         if (!activeChannelId) { setMessages([]); return; }
         setLoadingMessages(true);
         (async () => {
-            const data = await api<MessageItem[]>(`/api/channels/${activeChannelId}/messages?limit=100`);
-            const msgs = Array.isArray(data) ? data : [];
-            setMessages(msgs.map((m: any) => ({ ...m, createdAt: normDate(m.createdAt) })));
-            setLoadingMessages(false);
-            // mark read
-            fetchWithAuth(`/api/channels/${activeChannelId}/read`, { method: "POST" }).catch(() => {});
+            try {
+                const data = await api<MessageItem[]>(`/api/channels/${activeChannelId}/messages?limit=100`);
+                const msgs = Array.isArray(data) ? data : [];
+                setMessages(msgs.map((m: any) => ({ ...m, createdAt: normDate(m.createdAt) })));
+                // mark read
+                fetchWithAuth(`/api/channels/${activeChannelId}/read`, { method: "POST" }).catch(() => {});
+            } catch (e) {
+                console.error("Failed to load messages:", e);
+            } finally {
+                setLoadingMessages(false);
+            }
         })();
     }, [activeChannelId]);
 

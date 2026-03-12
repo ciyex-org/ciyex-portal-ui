@@ -17,15 +17,37 @@ export async function GET(
     const orgAlias = request.headers.get('x-org-alias');
     if (orgAlias) hdrs['X-Org-Alias'] = orgAlias;
 
-    const response = await fetch(`${BACKEND_URL}/api/fhir/portal/documents/${docId}/download`, {
-      method: 'GET',
-      headers: hdrs,
-    });
+    // Try multiple backend paths — the backend may serve documents at different endpoints
+    const paths = [
+      `/api/fhir/portal/documents/${docId}/download`,
+      `/api/portal/documents/${docId}/download`,
+      `/api/documents/${docId}/download`,
+      `/api/fhir/documents/${docId}/download`,
+    ];
 
-    if (!response.ok) {
+    let response: Response | null = null;
+    for (const path of paths) {
+      try {
+        const res = await fetch(`${BACKEND_URL}${path}`, { method: 'GET', headers: hdrs });
+        if (res.ok) {
+          response = res;
+          break;
+        }
+        // If not 404, stop trying (could be auth error etc.)
+        if (res.status !== 404) {
+          response = res;
+          break;
+        }
+      } catch {
+        // Network error on this path — try next
+      }
+    }
+
+    if (!response || !response.ok) {
+      const status = response?.status || 404;
       return new NextResponse(
-        JSON.stringify({ success: false, message: `Document not found (${response.status})` }),
-        { status: response.status, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, message: `Document not found (${status})` }),
+        { status, headers: { 'Content-Type': 'application/json' } }
       );
     }
 

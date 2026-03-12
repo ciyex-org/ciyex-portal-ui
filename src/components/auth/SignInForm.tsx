@@ -143,28 +143,37 @@ export default function SignInForm() {
         setLoading(true);
         setError("");
 
+        let keycloakError = "";
+
         try {
             // Try Keycloak auth first (provider-created patients)
-            const res = await fetch(`${apiUrl}/api/auth/login`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: email.trim(), password }),
-            });
+            try {
+                const res = await fetch(`${apiUrl}/api/auth/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email: email.trim(), password }),
+                });
 
-            const data = await res.json();
+                // Safely parse JSON — backend may return HTML error pages
+                const text = await res.text();
+                let data: any = {};
+                try { data = text ? JSON.parse(text) : {}; } catch { /* non-JSON response */ }
 
-            if (data.success && data.data?.token) {
-                // For Keycloak patients, ensure patientFhirId is populated
-                const loginData = data.data;
-                if (!loginData.patientFhirId) {
-                    const groups = Array.isArray(loginData.groups) ? loginData.groups : [];
-                    const isPatient = groups.some((g: string) => g?.toUpperCase() === "PATIENT");
-                    if (isPatient) {
-                        loginData.patientFhirId = loginData.userId || loginData.sub || loginData.fhirId || "";
+                if (data.success && data.data?.token) {
+                    const loginData = data.data;
+                    if (!loginData.patientFhirId) {
+                        const groups = Array.isArray(loginData.groups) ? loginData.groups : [];
+                        const isPatient = groups.some((g: string) => g?.toUpperCase() === "PATIENT");
+                        if (isPatient) {
+                            loginData.patientFhirId = loginData.userId || loginData.sub || loginData.fhirId || "";
+                        }
                     }
+                    await handlePostLogin(loginData);
+                    return;
                 }
-                await handlePostLogin(loginData);
-                return;
+                keycloakError = data.error || data.message || "";
+            } catch {
+                // Keycloak auth unavailable — fall through to portal auth
             }
 
             // Fallback: try portal auth (self-registered patients via FHIR Person)
@@ -174,10 +183,11 @@ export default function SignInForm() {
                 body: JSON.stringify({ email: email.trim(), password }),
             });
 
-            const portalData = await portalRes.json();
+            const portalText = await portalRes.text();
+            let portalData: any = {};
+            try { portalData = portalText ? JSON.parse(portalText) : {}; } catch { /* non-JSON */ }
 
             if (portalData.success && portalData.data?.token) {
-                // Portal auth returns slightly different shape — normalize for handlePostLogin
                 const pd = portalData.data;
                 await handlePostLogin({
                     token: pd.token,
@@ -192,7 +202,7 @@ export default function SignInForm() {
                 return;
             }
 
-            setError(portalData.message || data.error || "Invalid email or password");
+            setError(portalData.message || keycloakError || "Invalid email or password");
             setLoading(false);
         } catch {
             setError("Unable to connect. Please try again.");

@@ -124,17 +124,26 @@ export default function AppointmentsPage() {
                 setLocations(locs.data || []);
 
                 // Load visit types & priorities
+                const defaultVt = ["Follow-Up", "New Patient", "Annual Physical", "Urgent Care", "Telehealth"];
+                const defaultPr = ["Routine", "Urgent", "Emergency"];
                 try {
                     const optRes = await fetchWithAuth("/api/portal/list-options");
                     const optData = await safeJson(optRes);
-                    let vt = Array.isArray(optData?.data?.visit_types) ? optData.data.visit_types.map((i: any) => String(i.title || i.value || i)).filter(Boolean) : [];
-                    let pr = Array.isArray(optData?.data?.appointment_priorities) ? optData.data.appointment_priorities.map((i: any) => String(i.title || i.value || i)).filter(Boolean) : [];
-                    if (!vt.length) vt = ["Follow-Up", "New Patient", "Annual Physical", "Urgent Care", "Telehealth"];
-                    if (!pr.length) pr = ["Routine", "Urgent", "Emergency"];
+                    // Handle various response shapes
+                    const rawVt = optData?.data?.visit_types || optData?.data?.visitTypes || optData?.visit_types || optData?.visitTypes || [];
+                    const rawPr = optData?.data?.appointment_priorities || optData?.data?.appointmentPriorities || optData?.appointment_priorities || optData?.priorities || [];
+                    let vt = Array.isArray(rawVt) ? rawVt.map((i: any) => String(i.title || i.value || i.name || i)).filter(Boolean) : [];
+                    let pr = Array.isArray(rawPr) ? rawPr.map((i: any) => String(i.title || i.value || i.name || i)).filter(Boolean) : [];
+                    if (!vt.length) vt = defaultVt;
+                    if (!pr.length) pr = defaultPr;
                     setVisitTypes(vt);
                     setPriorities(pr);
                     setForm((f) => ({ ...f, visitType: f.visitType || vt[0], priority: f.priority || pr[0] }));
-                } catch { setVisitTypes(["Follow-Up", "New Patient", "Annual Physical", "Urgent Care", "Telehealth"]); setPriorities(["Routine", "Urgent", "Emergency"]); }
+                } catch {
+                    setVisitTypes(defaultVt);
+                    setPriorities(defaultPr);
+                    setForm((f) => ({ ...f, visitType: f.visitType || defaultVt[0], priority: f.priority || defaultPr[0] }));
+                }
             } catch {
                 setAlert({ type: "error", message: "Could not load appointments." });
             } finally { setLoading(false); }
@@ -155,6 +164,7 @@ export default function AppointmentsPage() {
         setFetchingSlots(true);
         try {
             const d = new Date(date);
+            if (isNaN(d.getTime())) { setAvailableSlots(generateDefaultSlots()); return; }
             const isoDate = d.toISOString().split("T")[0];
             const legacyFmt = `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${String(d.getFullYear()).slice(-2)}`;
             let slots: any[] = [];
@@ -162,20 +172,29 @@ export default function AppointmentsPage() {
                 try {
                     const res = await fetchWithAuth(`/api/portal/appointments/available-slots?provider_id=${providerId}&date=${fmt}&limit=10`);
                     const data = await safeJson(res);
-                    const raw = data.data || [];
+                    const raw = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
                     if (raw.length > 0) {
                         slots = raw.map((s: any) => {
-                            const st = new Date(s.start);
+                            const st = new Date(s.start || s.startTime || s.appointmentStartTime || "");
+                            if (isNaN(st.getTime())) {
+                                // If can't parse start time, use the raw time string
+                                const rawTime = s.formattedTime || s.time || s.appointmentStartTime || "";
+                                return { appointmentStartTime: rawTime, formattedTime: rawTime };
+                            }
                             const h = st.getHours(), m = String(st.getMinutes()).padStart(2, "0");
                             const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
                             return { appointmentStartTime: `${String(h).padStart(2, "0")}:${m}:00`, formattedTime: `${h12}:${m} ${h >= 12 ? "PM" : "AM"}` };
-                        });
+                        }).filter((s: any) => s.appointmentStartTime);
                         break;
                     }
                 } catch { /* try next format */ }
             }
             setAvailableSlots(slots.length > 0 ? slots : generateDefaultSlots());
-        } catch { setAvailableSlots(generateDefaultSlots()); } finally { setFetchingSlots(false); }
+        } catch {
+            setAvailableSlots(generateDefaultSlots());
+        } finally {
+            setFetchingSlots(false);
+        }
     }
 
     function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {

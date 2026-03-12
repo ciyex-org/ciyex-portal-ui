@@ -56,50 +56,73 @@ export function useDocuments() {
   }, []);
 
   const downloadDocument = async (docId: number) => {
-    try {
-      const res = await fetchWithAuth(`/api/fhir/portal/documents/${docId}/download`);
-      
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = documents.find(d => d.id === docId)?.fileName || 'document';
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      
-      return true;
-    } catch (e) {
-      console.error("Download error:", e);
-      return false;
+    const paths = [
+      `/api/fhir/portal/documents/${docId}/download`,
+      `/api/portal/documents/${docId}/download`,
+      `/api/documents/${docId}/download`,
+      `/api/fhir/documents/${docId}/download`,
+    ];
+
+    for (const path of paths) {
+      try {
+        const res = await fetchWithAuth(path);
+        if (res.ok) {
+          const blob = await res.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = documents.find(d => d.id === docId)?.fileName || 'document';
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+          return true;
+        }
+        if (res.status !== 404) break;
+      } catch {
+        // try next path
+      }
     }
+
+    console.error("Download error: all paths returned 404 for doc", docId);
+    return false;
   };
 
   const viewDocument = async (docId: number): Promise<string | null> => {
-    try {
-      const res = await fetchWithAuth(`/api/fhir/portal/documents/${docId}/download`);
-      if (!res.ok) {
-        const errorMsg = res.status === 404
-          ? "Document not found. It may have been removed or is not yet available."
-          : `Failed to load document (HTTP ${res.status})`;
-        throw new Error(errorMsg);
+    // Try multiple endpoint paths — backend may serve at different locations
+    const paths = [
+      `/api/fhir/portal/documents/${docId}/download`,
+      `/api/portal/documents/${docId}/download`,
+      `/api/documents/${docId}/download`,
+      `/api/fhir/documents/${docId}/download`,
+    ];
+
+    for (const path of paths) {
+      try {
+        const res = await fetchWithAuth(path);
+        if (res.ok) {
+          const blob = await res.blob();
+          const url = window.URL.createObjectURL(blob);
+          window.open(url, '_blank');
+          setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+          return url;
+        }
+        // If not 404, stop trying other paths
+        if (res.status !== 404) {
+          const errorMsg = `Failed to load document (HTTP ${res.status})`;
+          if (typeof window !== 'undefined') window.alert(errorMsg);
+          return null;
+        }
+      } catch {
+        // Network error — try next path
       }
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      window.open(url, '_blank');
-      setTimeout(() => window.URL.revokeObjectURL(url), 10000);
-      return url;
-    } catch (e) {
-      console.error("View error:", e);
-      const message = e instanceof Error ? e.message : "Could not open document. Please try again later.";
-      if (typeof window !== 'undefined') {
-        window.alert(message);
-      }
-      return null;
     }
+
+    // All paths returned 404
+    if (typeof window !== 'undefined') {
+      window.alert("Document not found. It may have been removed or is not yet available.");
+    }
+    return null;
   };
 
   const deleteDocument = async (docId: number) => {

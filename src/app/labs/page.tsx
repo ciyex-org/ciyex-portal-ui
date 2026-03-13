@@ -51,9 +51,9 @@ export default function LabsPage() {
             setLabs(raw.map((item: any) => ({
                 id: item.id,
                 testName: item.testName || item.testDisplay || item.orderName || item.test_name || item.name || item.testCode || "Lab Order",
-                orderedDate: item.orderDate || item.orderDateTime || item.effectiveDate || item.orderedDate || item.ordered_date || item.issued || item._lastUpdated || "",
-                collectionDate: item.collectedDate || item.collectionDate || item.collection_date || item.specimenCollectedDate || undefined,
-                resultDate: item.reportedDate || item.resultDate || item.result_date || item.resultDateTime || item.signedAt || undefined,
+                orderedDate: item.orderDate || item.orderDateTime || item.orderedDate || item.ordered_date || item._lastUpdated || "",
+                collectionDate: item.effectiveDateTime || item.effectiveDate || item.collectedDate || item.collectionDate || item.collection_date || item.specimenCollectedDate || undefined,
+                resultDate: item.issued || item.reportedDate || item.resultDate || item.result_date || item.resultDateTime || undefined,
                 status: item.status || "unknown",
                 result: item.conclusion || item.result || item.resultValue || undefined,
                 details: item.details || item.resultDetails || item.notes || undefined,

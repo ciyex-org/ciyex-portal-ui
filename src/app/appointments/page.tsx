@@ -211,16 +211,43 @@ export default function AppointmentsPage() {
             setAlert({ type: "error", message: "Please select provider, date, time, and location." });
             return;
         }
+        // Build ISO datetime for FHIR start/end fields
         const d = new Date(form.date);
-        const fmt = `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${String(d.getFullYear()).slice(-2)}`;
+        const timeParts = form.time.split(":");
+        d.setHours(parseInt(timeParts[0] || "0"), parseInt(timeParts[1] || "0"), 0, 0);
+        const startIso = d.toISOString();
+        const endDt = new Date(d.getTime() + 30 * 60 * 1000); // default 30 min duration
+        const endIso = endDt.toISOString();
+
+        // Resolve FHIR references for provider and location
+        const prov = providers.find((p) => String(p.id) === String(form.providerId));
+        const loc = locations.find((l) => String(l.id) === String(form.locationId));
+        const providerRef = (prov as any)?.fhirId ? `Practitioner/${(prov as any).fhirId}` : String(form.providerId);
+        const locationRef = (loc as any)?.fhirId ? `Location/${(loc as any).fhirId}` : String(form.locationId);
+
         setSubmitting(true);
         try {
+            // Map to FHIR appointment tab_field_config keys
+            const payload: Record<string, any> = {
+                appointmentType: form.visitType || "Consultation",
+                start: startIso,
+                end: endIso,
+                provider: providerRef,
+                location: locationRef,
+                reason: form.reason || "",
+                priority: (form.priority || "routine").toLowerCase(),
+                status: "proposed",
+                // Also send legacy fields for backward compat
+                visitType: form.visitType,
+                providerId: Number(form.providerId),
+                locationId: Number(form.locationId),
+            };
             const res = await fetchWithAuth("/api/portal/appointments", {
                 method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ visitType: form.visitType, providerId: Number(form.providerId), locationId: Number(form.locationId), date: fmt, time: form.time, reason: form.reason, priority: form.priority }),
+                body: JSON.stringify(payload),
             });
             const saved = await safeJson(res);
-            if (!saved.success) throw new Error(saved.message);
+            if (!saved.success) throw new Error(saved.message || "Failed to create appointment");
             setAppointments((p) => [...p, saved.data]);
             setShowModal(false);
             setAvailableSlots([]);

@@ -1,6 +1,17 @@
 import { useEffect, useState, useCallback } from "react";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
 
+/** Return the value only if it looks like a parseable date, otherwise empty string */
+function toDateOrEmpty(v: any): string {
+  if (!v || typeof v !== 'string') return '';
+  // Skip values that are clearly status strings, not dates
+  const dt = new Date(v);
+  if (isNaN(dt.getTime())) return '';
+  // Additional guard: reject strings that are single words (status values like "progress", "active")
+  if (/^[a-zA-Z]+$/.test(v.trim())) return '';
+  return v;
+}
+
 export type ApiDocument = {
   id: number;
   patientId: number;
@@ -36,8 +47,8 @@ export function useDocuments() {
           description: item.description || item.title,
           encrypted: item.encrypted ?? !!(item.encryptionkey || item.encryptionKey),
           archived: item.archived || item.status === 'ARCHIVED' || false,
-          createdDate: item.documentDate ?? item.createdDate ?? item.created_date ?? item.uploadDate ?? '',
-          lastModifiedDate: item.lastModifiedDate ?? item.last_modified_date ?? '',
+          createdDate: toDateOrEmpty(item.documentDate) || toDateOrEmpty(item.createdDate) || toDateOrEmpty(item.created_date) || toDateOrEmpty(item.uploadDate) || toDateOrEmpty(item.date) || '',
+          lastModifiedDate: toDateOrEmpty(item.lastModifiedDate) || toDateOrEmpty(item.last_modified_date) || '',
         }));
         setDocuments(mapped);
       } else if (res.status === 403) {
@@ -78,13 +89,16 @@ export function useDocuments() {
           document.body.removeChild(a);
           return true;
         }
-        if (res.status !== 404) break;
+        // Keep trying on 404, 500, 403 — another path may work
+        if (res.status !== 404 && res.status !== 500 && res.status !== 403) break;
       } catch {
         // try next path
       }
     }
 
-    console.error("Download error: all paths returned 404 for doc", docId);
+    if (typeof window !== 'undefined') {
+      window.alert("Failed to download document. The file may not be available yet.");
+    }
     return false;
   };
 
@@ -107,8 +121,8 @@ export function useDocuments() {
           setTimeout(() => window.URL.revokeObjectURL(url), 10000);
           return url;
         }
-        // If not 404, stop trying other paths
-        if (res.status !== 404) {
+        // Keep trying on 404, 500, 403 — another path may work
+        if (res.status !== 404 && res.status !== 500 && res.status !== 403) {
           const errorMsg = `Failed to load document (HTTP ${res.status})`;
           if (typeof window !== 'undefined') window.alert(errorMsg);
           return null;
@@ -118,9 +132,9 @@ export function useDocuments() {
       }
     }
 
-    // All paths returned 404
+    // All paths failed
     if (typeof window !== 'undefined') {
-      window.alert("Document not found. It may have been removed or is not yet available.");
+      window.alert("Document not found or not available. Please contact your provider.");
     }
     return null;
   };

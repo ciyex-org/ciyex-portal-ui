@@ -24,7 +24,19 @@ export default function PatientEducationPage() {
             if (!res.ok) return;
             const response = await res.json();
             const data = response.data;
-            setTopics(Array.isArray(data) ? data : (data?.content || []));
+            const rawList = Array.isArray(data) ? data : (data?.content || []);
+            // Map EducationMaterialDto to expected Topic shape
+            const mapped = rawList.map((m: any) => ({
+                id: String(m.id),
+                title: m.title || "Untitled",
+                summary: m.content ? m.content.substring(0, 200) : "",
+                category: m.category || "General",
+                language: m.language || "en",
+                readingLevel: m.audience || "",
+                content: m.content || m.externalUrl || "",
+                fhirId: m.fhirId,
+            }));
+            setTopics(mapped);
         } catch { /* endpoint may not exist yet */ }
     }, []);
 
@@ -34,7 +46,26 @@ export default function PatientEducationPage() {
             const res = await fetchWithAuth("/api/portal/patient-education-assignments/my-assignments");
             if (!res.ok) return;
             const response = await res.json();
-            setAssignments(Array.isArray(response.data) ? response.data : []);
+            const raw = Array.isArray(response.data) ? response.data : [];
+            // Map PatientEducationAssignmentDto to expected Assignment shape
+            const mapped = raw.map((a: any) => ({
+                id: String(a.id),
+                patientId: String(a.patientId || ""),
+                patientName: a.patientName || "",
+                notes: a.notes || "",
+                delivered: a.status === "completed" || a.status === "viewed",
+                assignedDate: a.assignedDate || a.createdAt || "",
+                topic: a.topic || {
+                    id: String(a.materialId || a.id),
+                    title: a.materialTitle || "Education Material",
+                    summary: a.notes || "",
+                    category: a.materialCategory || "General",
+                    language: "en",
+                    readingLevel: "",
+                    content: "",
+                },
+            }));
+            setAssignments(mapped);
         } catch { /* endpoint may not exist yet */ }
     }, [mounted]);
 

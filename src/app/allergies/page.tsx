@@ -45,11 +45,38 @@ export default function AllergiesPage() {
         try {
             const res = await fetchWithAuth("/api/portal/history");
             const data = await res.json();
-            setHistory((data.data || []).map((i: any) => ({
-                id: i.id, type: i.history_type || "Condition",
-                description: i.medical_condition ? `${i.medical_condition} ${i.description}` : i.description,
-                year: i.date_occurred || i.onset_date ? new Date(i.date_occurred || i.onset_date).getFullYear().toString() : ""
-            })));
+            const rawItems = data.data || [];
+            // FHIR history config uses QuestionnaireResponse with keys like smokingStatus, alcoholUse, etc.
+            // Also handle traditional record format with medical_condition/description
+            const items: HistoryItem[] = [];
+            if (Array.isArray(rawItems) && rawItems.length > 0) {
+                for (const i of rawItems) {
+                    // Check for FHIR QuestionnaireResponse format (flat key-value)
+                    if (i.smokingStatus || i.alcoholUse || i.exerciseFrequency || i.additionalHistory ||
+                        i.fatherHistory || i.motherHistory || i.siblingsHistory || i.offspringHistory) {
+                        // General health entries
+                        if (i.smokingStatus) items.push({ id: items.length + 1, type: "Condition", description: `Smoking: ${i.smokingStatus}` });
+                        if (i.alcoholUse) items.push({ id: items.length + 1, type: "Condition", description: `Alcohol use: ${i.alcoholUse}` });
+                        if (i.exerciseFrequency) items.push({ id: items.length + 1, type: "Condition", description: `Exercise: ${i.exerciseFrequency}` });
+                        if (i.additionalHistory) items.push({ id: items.length + 1, type: "Condition", description: i.additionalHistory });
+                        // Family history entries
+                        if (i.fatherHistory) items.push({ id: items.length + 1, type: "Family", description: `Father: ${i.fatherHistory}` });
+                        if (i.motherHistory) items.push({ id: items.length + 1, type: "Family", description: `Mother: ${i.motherHistory}` });
+                        if (i.siblingsHistory) items.push({ id: items.length + 1, type: "Family", description: `Siblings: ${i.siblingsHistory}` });
+                        if (i.offspringHistory) items.push({ id: items.length + 1, type: "Family", description: `Offspring: ${i.offspringHistory}` });
+                    } else {
+                        // Traditional record format
+                        const desc = i.medical_condition ? `${i.medical_condition} ${i.description || ""}`.trim() : (i.description || i.name || i.condition || "");
+                        items.push({
+                            id: i.id || items.length + 1,
+                            type: i.history_type || i.type || "Condition",
+                            description: desc,
+                            year: i.date_occurred || i.onset_date ? new Date(i.date_occurred || i.onset_date).getFullYear().toString() : ""
+                        });
+                    }
+                }
+            }
+            setHistory(items);
         } catch { setAlert({ type: "error", message: "Failed to load history." }); }
     }
 

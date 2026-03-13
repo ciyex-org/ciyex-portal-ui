@@ -20,18 +20,44 @@ export default function UserAddressCard() {
         }
     }, []);
 
+    const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+
     const handleSave = async () => {
         if (!user) return;
-        const res = await fetchWithAuth("/api/users/me", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(formData),
-        });
-        if (res.ok) {
-            const updated = { ...user, ...formData };
-            localStorage.setItem("user", JSON.stringify(updated));
-            setUser(updated);
-            closeModal();
+        setSaving(true);
+        setSaveError(null);
+        try {
+            // Map address fields to demographics DTO format
+            const payload = {
+                firstName: formData.firstName || user.firstName,
+                lastName: formData.lastName || user.lastName,
+                address: formData.street || "",
+                city: formData.city || "",
+                state: formData.state || "",
+                postalCode: formData.postalCode || "",
+                country: formData.country || "",
+                contactEmail: formData.email || user.email,
+                phoneMobile: formData.phone || user.phone,
+            };
+            const res = await fetchWithAuth("/api/portal/patients/me/demographics", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            if (res.ok) {
+                const updated = { ...user, ...formData };
+                localStorage.setItem("user", JSON.stringify(updated));
+                setUser(updated);
+                closeModal();
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                setSaveError(errData.message || `Save failed (HTTP ${res.status})`);
+            }
+        } catch (e) {
+            setSaveError("Network error. Please try again.");
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -149,15 +175,22 @@ export default function UserAddressCard() {
                         </div>
                     </div>
 
+                    {saveError && (
+                        <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                            {saveError}
+                        </div>
+                    )}
+
                     <div className="flex justify-end gap-2 mt-4">
                         <button onClick={closeModal} className="px-4 py-2 border rounded-lg">
                             Close
                         </button>
                         <button
                             onClick={handleSave}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+                            disabled={saving}
+                            className={`px-4 py-2 text-white rounded-lg ${saving ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"}`}
                         >
-                            Save Changes
+                            {saving ? "Saving..." : "Save Changes"}
                         </button>
                     </div>
                 </div>

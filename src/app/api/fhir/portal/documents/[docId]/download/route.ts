@@ -16,6 +16,8 @@ export async function GET(
     const hdrs: Record<string, string> = { 'Authorization': authHeader };
     const orgAlias = request.headers.get('x-org-alias');
     if (orgAlias) hdrs['X-Org-Alias'] = orgAlias;
+    const tenantName = request.headers.get('x-tenant-name');
+    if (tenantName) hdrs['X-Tenant-Name'] = tenantName;
 
     // Try multiple backend paths — the backend may serve documents at different endpoints
     const paths = [
@@ -33,11 +35,14 @@ export async function GET(
           response = res;
           break;
         }
-        // If not 404, stop trying (could be auth error etc.)
-        if (res.status !== 404) {
-          response = res;
-          break;
+        // For 500/403, keep trying other paths — the error might be path-specific
+        if (res.status === 404 || res.status === 500 || res.status === 403) {
+          if (!response || response.status === 404) response = res;
+          continue;
         }
+        // For other errors (401 etc.), stop trying
+        response = res;
+        break;
       } catch {
         // Network error on this path — try next
       }

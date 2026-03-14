@@ -39,7 +39,7 @@ export function useNotifications() {
     try {
       const allNotifications: Notification[] = [];
 
-      // Load messages — wrapped in its own try/catch so one failure doesn't block the other
+      // Load messages from communications API
       try {
         const messagesRes = await fetchWithAuth("/api/portal/communications/my");
         if (messagesRes.ok) {
@@ -60,6 +60,33 @@ export function useNotifications() {
           }
         }
       } catch { /* communications unavailable */ }
+
+      // Load unread messages from messaging channels
+      try {
+        const channelsRes = await fetchWithAuth("/api/channels");
+        if (channelsRes.ok) {
+          const channelData = await safeJson(channelsRes);
+          const channels = Array.isArray(channelData?.data) ? channelData.data : (Array.isArray(channelData) ? channelData : []);
+          for (const ch of channels) {
+            const unread = ch.unreadCount || 0;
+            if (unread > 0) {
+              const lastMsg = ch.lastMessage;
+              allNotifications.push({
+                id: `ch-${ch.id}` as unknown as number,
+                type: 'message' as const,
+                title: lastMsg?.senderName || ch.name || 'New message',
+                message: lastMsg?.content
+                  ? (lastMsg.content.length > 80 ? lastMsg.content.substring(0, 80) + '...' : lastMsg.content)
+                  : `${unread} unread message${unread > 1 ? 's' : ''}`,
+                isRead: false,
+                createdAt: lastMsg?.createdAt || ch.createdAt || new Date().toISOString(),
+                actionUrl: '/messages',
+                fromUser: lastMsg?.senderName || ch.name
+              });
+            }
+          }
+        }
+      } catch { /* messaging channels unavailable */ }
 
       // Load appointments (upcoming)
       try {

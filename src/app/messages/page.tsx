@@ -152,7 +152,8 @@ export default function MessagesPage() {
 
     /* start DM with provider */
     const startDm = useCallback(async (provider: Provider) => {
-        const userId = provider.email || `provider-${provider.id}`;
+        // Prefer Keycloak UUID, fall back to email (backend will resolve to UUID)
+        const userId = provider.keycloakUserId || provider.email || `provider-${provider.id}`;
         const data = await api<Channel>("/api/channels/dm", {
             method: "POST",
             body: JSON.stringify({ targetUserId: userId, targetUserName: provider.fullName }),

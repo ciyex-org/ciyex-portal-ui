@@ -7,6 +7,7 @@ export interface Provider {
     title: string;
     phone: string;
     email: string;
+    keycloakUserId?: string;
     identification: {
         firstName: string;
         lastName: string;
@@ -51,6 +52,8 @@ export function useProviders() {
                 title?: string;
                 phone?: string;
                 email?: string;
+                keycloakUserId?: string;
+                systemAccess?: { keycloakUserId?: string };
                 name?: string;
                 contactPhone?: string;
                 contactEmail?: string;
@@ -85,6 +88,7 @@ export function useProviders() {
                 title: p.title || p.professionalDetails?.title || '',
                 phone: p.phone || p.contactPhone || '',
                 email: p.email || p.contactEmail || '',
+                keycloakUserId: p.keycloakUserId || p.systemAccess?.keycloakUserId || '',
                 identification: {
                     firstName: p.identification?.firstName || p.firstName || '',
                     lastName: p.identification?.lastName || p.lastName || ''

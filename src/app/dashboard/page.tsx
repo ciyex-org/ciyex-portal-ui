@@ -131,22 +131,21 @@ export default function Dashboard() {
             const latest = dataList[0];
             const dateVal = latest.recordedAt || latest.effectiveDateTime || latest.date || "";
             const out: VitalReading[] = [];
-            const sys = latest.bpSystolic || latest.systolic;
-            const dia = latest.bpDiastolic || latest.diastolic;
+            const sys = latest.bpSystolic ?? latest.systolicBP ?? latest.systolic ?? latest.systolicBloodPressure;
+            const dia = latest.bpDiastolic ?? latest.diastolicBP ?? latest.diastolic ?? latest.diastolicBloodPressure;
             if (sys && dia)
                 out.push({ type: "Blood Pressure", value: `${sys}/${dia}`, unit: "mmHg", date: dateVal });
-            const hr = latest.pulse || latest.heartRate || latest.heart_rate;
+            const hr = latest.pulse ?? latest.heartRate ?? latest.heart_rate ?? latest.hr;
             if (hr)
                 out.push({ type: "Heart Rate", value: `${hr}`, unit: "bpm", date: dateVal });
-            const spo2 = latest.oxygenSaturation || latest.spo2 || latest.o2Saturation;
+            const spo2 = latest.oxygenSaturation ?? latest.spo2 ?? latest.spO2 ?? latest.o2Saturation ?? latest.oxygenSat;
             if (spo2)
                 out.push({ type: "SpO2", value: `${spo2}`, unit: "%", date: dateVal });
-            // FHIR config uses weightKg, not weightLbs
-            const weight = latest.weightKg || latest.weightLbs || latest.weight;
+            const weight = latest.weightKg ?? latest.weightLbs ?? latest.weight;
             const weightUnit = latest.weightKg ? "kg" : latest.weightLbs ? "lbs" : "kg";
             if (weight)
                 out.push({ type: "Weight", value: `${weight}`, unit: weightUnit, date: dateVal });
-            const bmiVal = latest.bmi;
+            const bmiVal = latest.bmi ?? latest.BMI;
             if (bmiVal)
                 out.push({ type: "BMI", value: Number(bmiVal).toFixed(1), unit: "", date: dateVal });
             setVitals(out);

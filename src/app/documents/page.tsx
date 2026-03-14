@@ -8,8 +8,8 @@ function fmtDate(d?: string) {
     if (!d) return "—";
     try {
         const dt = new Date(d);
-        return isNaN(dt.getTime()) ? d : dt.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
-    } catch { return d; }
+        return isNaN(dt.getTime()) ? "—" : dt.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    } catch { return "—"; }
 }
 
 function categoryBadge(cat?: string) {

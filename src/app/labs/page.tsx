@@ -28,12 +28,23 @@ function statusBadge(status?: string) {
     return <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>{status || "Unknown"}</span>;
 }
 
+function normalizeDate(v: any): string | undefined {
+    if (!v) return undefined;
+    if (Array.isArray(v)) {
+        const [y, m = 1, d = 1, hh = 0, mm = 0, ss = 0, ns = 0] = v;
+        const ms = Math.floor((ns || 0) / 1e6);
+        return new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0, ss || 0, ms).toISOString();
+    }
+    if (typeof v === "string") return v;
+    return undefined;
+}
+
 function fmtDate(d?: string) {
     if (!d) return "—";
     try {
         const dt = new Date(d);
-        return isNaN(dt.getTime()) ? d : dt.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
-    } catch { return d; }
+        return isNaN(dt.getTime()) ? "—" : dt.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    } catch { return "—"; }
 }
 
 export default function LabsPage() {
@@ -51,9 +62,9 @@ export default function LabsPage() {
             setLabs(raw.map((item: any) => ({
                 id: item.id,
                 testName: item.testName || item.testDisplay || item.orderName || item.test_name || item.name || item.testCode || "Lab Order",
-                orderedDate: item.orderDate || item.orderDateTime || item.orderedDate || item.ordered_date || item._lastUpdated || "",
-                collectionDate: item.effectiveDateTime || item.effectiveDate || item.collectedDate || item.collectionDate || item.collection_date || item.specimenCollectedDate || undefined,
-                resultDate: item.issued || item.reportedDate || item.resultDate || item.result_date || item.resultDateTime || undefined,
+                orderedDate: normalizeDate(item.orderDate || item.orderDateTime || item.effectiveDate || item.orderedDate || item.ordered_date || item.issued || item._lastUpdated) || "",
+                collectionDate: normalizeDate(item.collectedDate || item.collectionDate || item.collection_date || item.specimenCollectedDate || item.effectiveDateTime || item.effectivePeriod?.start),
+                resultDate: normalizeDate(item.reportedDate || item.resultDate || item.result_date || item.resultDateTime || item.signedAt || item.issued),
                 status: item.status || "unknown",
                 result: item.conclusion || item.result || item.resultValue || undefined,
                 details: item.details || item.resultDetails || item.notes || undefined,

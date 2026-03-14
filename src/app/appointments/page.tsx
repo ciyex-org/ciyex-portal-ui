@@ -247,12 +247,14 @@ export default function AppointmentsPage() {
                 body: JSON.stringify(payload),
             });
             const saved = await safeJson(res);
-            if (!saved.success) throw new Error(saved.message || "Failed to create appointment");
-            setAppointments((p) => [...p, saved.data]);
+            if (!res.ok && saved.success === false) throw new Error(saved.message || `HTTP ${res.status}`);
+            if (!res.ok && !saved.data) throw new Error(saved.message || "Could not create appointment.");
+            const apptData = saved.data || saved;
+            if (apptData && typeof apptData === "object" && !Array.isArray(apptData)) setAppointments((p) => [...p, apptData]);
             setShowModal(false);
             setAvailableSlots([]);
             setForm({ providerId: "", locationId: "", date: "", time: "", reason: "", visitType: visitTypes[0] || "", priority: priorities[0] || "" });
-            setAlert({ type: "success", message: saved.message || "Appointment requested." });
+            setAlert({ type: "success", message: saved.message || "Appointment requested successfully." });
         } catch (err) {
             setAlert({ type: "error", message: err instanceof Error ? err.message : "Could not create appointment." });
         } finally { setSubmitting(false); }

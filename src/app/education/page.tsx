@@ -55,7 +55,7 @@ export default function PatientEducationPage() {
                 notes: a.notes || "",
                 delivered: a.status === "completed" || a.status === "viewed",
                 assignedDate: a.assignedDate || a.createdAt || "",
-                topic: a.topic || {
+                topic: a.topic || a.educationTopic || a.topicDetails || a.patientEducationTopic || {
                     id: String(a.materialId || a.id),
                     title: a.materialTitle || "Education Material",
                     summary: a.notes || "",
@@ -71,8 +71,10 @@ export default function PatientEducationPage() {
 
     useEffect(() => { if (mounted) { loadTopics(); loadAssignments(); } }, [mounted, loadTopics, loadAssignments]);
 
-    const assignedTopicIds = new Set(assignments.map((a) => a.topic?.id || a.patientId));
-    const displayTopics = viewMode === "assigned" ? assignments.map((a) => a.topic).filter(Boolean) : topics;
+    const assignedTopicIds = new Set(assignments.map((a) => a.topic?.id || (a as any).topicId).filter(Boolean));
+    const displayTopics = viewMode === "assigned"
+        ? assignments.map((a) => a.topic || ((a as any).topicId && topics.find((t) => t.id === (a as any).topicId)) || null).filter(Boolean) as Topic[]
+        : topics;
 
     if (!mounted) {
         return <AdminLayout><div className="flex items-center justify-center py-20"><div className="animate-spin w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full" /></div></AdminLayout>;

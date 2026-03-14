@@ -54,24 +54,27 @@ export default function AllergiesPage() {
                     // Check for FHIR QuestionnaireResponse format (flat key-value)
                     if (i.smokingStatus || i.alcoholUse || i.exerciseFrequency || i.additionalHistory ||
                         i.fatherHistory || i.motherHistory || i.siblingsHistory || i.offspringHistory) {
-                        // General health entries
                         if (i.smokingStatus) items.push({ id: items.length + 1, type: "Condition", description: `Smoking: ${i.smokingStatus}` });
                         if (i.alcoholUse) items.push({ id: items.length + 1, type: "Condition", description: `Alcohol use: ${i.alcoholUse}` });
                         if (i.exerciseFrequency) items.push({ id: items.length + 1, type: "Condition", description: `Exercise: ${i.exerciseFrequency}` });
                         if (i.additionalHistory) items.push({ id: items.length + 1, type: "Condition", description: i.additionalHistory });
-                        // Family history entries
                         if (i.fatherHistory) items.push({ id: items.length + 1, type: "Family", description: `Father: ${i.fatherHistory}` });
                         if (i.motherHistory) items.push({ id: items.length + 1, type: "Family", description: `Mother: ${i.motherHistory}` });
                         if (i.siblingsHistory) items.push({ id: items.length + 1, type: "Family", description: `Siblings: ${i.siblingsHistory}` });
                         if (i.offspringHistory) items.push({ id: items.length + 1, type: "Family", description: `Offspring: ${i.offspringHistory}` });
                     } else {
-                        // Traditional record format
-                        const desc = i.medical_condition ? `${i.medical_condition} ${i.description || ""}`.trim() : (i.description || i.name || i.condition || "");
+                        // Traditional record format — avoid "undefined" in description
+                        const condition = i.medical_condition || i.conditionName || i.condition || i.diagnosis || "";
+                        const desc = i.description || i.notes || i.comment || i.name || "";
+                        const fullDesc = condition && desc ? `${condition}: ${desc}` : condition || desc || "";
+                        const rawDate = i.date_occurred || i.onset_date || i.onsetDate || i.dateOccurred || "";
+                        let year = "";
+                        if (rawDate) { try { year = new Date(rawDate).getFullYear().toString(); } catch { year = ""; } }
                         items.push({
                             id: i.id || items.length + 1,
-                            type: i.history_type || i.type || "Condition",
-                            description: desc,
-                            year: i.date_occurred || i.onset_date ? new Date(i.date_occurred || i.onset_date).getFullYear().toString() : ""
+                            type: i.history_type || i.historyType || i.type || "Condition",
+                            description: fullDesc,
+                            year,
                         });
                     }
                 }

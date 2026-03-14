@@ -28,22 +28,10 @@ export default function UserAddressCard() {
         setSaving(true);
         setSaveError(null);
         try {
-            // Map address fields to demographics DTO format
-            const payload = {
-                firstName: formData.firstName || user.firstName,
-                lastName: formData.lastName || user.lastName,
-                address: formData.street || "",
-                city: formData.city || "",
-                state: formData.state || "",
-                postalCode: formData.postalCode || "",
-                country: formData.country || "",
-                contactEmail: formData.email || user.email,
-                phoneMobile: formData.phone || user.phone,
-            };
-            const res = await fetchWithAuth("/api/portal/patients/me/demographics", {
+            const res = await fetchWithAuth("/api/portal/patient/me", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
+                body: JSON.stringify(formData),
             });
             if (res.ok) {
                 const updated = { ...user, ...formData };
@@ -54,7 +42,7 @@ export default function UserAddressCard() {
                 const errData = await res.json().catch(() => ({}));
                 setSaveError(errData.message || `Save failed (HTTP ${res.status})`);
             }
-        } catch (e) {
+        } catch {
             setSaveError("Network error. Please try again.");
         } finally {
             setSaving(false);

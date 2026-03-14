@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import AdminLayout from "@/app/(admin)/layout";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
-import { useProviders, Provider } from "@/hooks/useProviders";
+import { useProviders, useCareTeamProviders, Provider } from "@/hooks/useProviders";
 import {
     MessageSquare, Send, Search, PenSquare, X, Paperclip, Pin,
 } from "lucide-react";
@@ -68,7 +68,7 @@ function normDate(v: unknown): string {
 
 /* ───── Page ───── */
 export default function MessagesPage() {
-    const { providers } = useProviders();
+    const { providers } = useCareTeamProviders();
     const [currentUserId, setCurrentUserId] = useState("");
     const [currentUserName, setCurrentUserName] = useState("");
 

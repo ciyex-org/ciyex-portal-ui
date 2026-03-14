@@ -135,3 +135,89 @@ export function useProviders() {
         searchProviders
     };
 }
+
+/**
+ * Returns only providers the patient has had appointments with (care team).
+ * Used by messaging to restrict which providers a patient can message.
+ */
+export function useCareTeamProviders() {
+    const [providers, setProviders] = useState<Provider[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const fetchProviders = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await fetchWithAuth('/api/portal/my-providers');
+            if (!response.ok) {
+                throw new Error(`Care team fetch failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            type RawProvider = {
+                id: number;
+                fullName?: string;
+                title?: string;
+                phone?: string;
+                email?: string;
+                keycloakUserId?: string;
+                systemAccess?: { keycloakUserId?: string };
+                name?: string;
+                contactPhone?: string;
+                contactEmail?: string;
+                identification?: { firstName?: string; lastName?: string };
+                professionalDetails?: {
+                    specialty?: string;
+                    title?: string;
+                    location?: string;
+                    workingHours?: string;
+                    experience?: string;
+                    languages?: string[];
+                };
+                specialty?: string;
+                firstName?: string;
+                lastName?: string;
+            };
+            const providerArray: RawProvider[] = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+
+            const mapped: Provider[] = providerArray.map((p: RawProvider) => ({
+                id: p.id,
+                fullName: p.fullName || [p.identification?.firstName, p.identification?.lastName].filter(Boolean).join(' ') || p.name || 'Unknown',
+                title: p.title || p.professionalDetails?.title || '',
+                phone: p.phone || p.contactPhone || '',
+                email: p.email || p.contactEmail || '',
+                keycloakUserId: p.keycloakUserId || p.systemAccess?.keycloakUserId || '',
+                identification: {
+                    firstName: p.identification?.firstName || p.firstName || '',
+                    lastName: p.identification?.lastName || p.lastName || ''
+                },
+                professionalDetails: {
+                    specialty: p.professionalDetails?.specialty || p.specialty || '',
+                    location: p.professionalDetails?.location || '',
+                    workingHours: p.professionalDetails?.workingHours || '',
+                    experience: p.professionalDetails?.experience || '',
+                    languages: p.professionalDetails?.languages || []
+                }
+            }));
+
+            setProviders(mapped);
+        } catch (err) {
+            console.error('[useCareTeamProviders] Fetch error:', err);
+            setError(err instanceof Error ? err.message : 'Unknown error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchProviders();
+    }, []);
+
+    return {
+        providers,
+        loading,
+        error,
+        refetch: fetchProviders
+    };
+}

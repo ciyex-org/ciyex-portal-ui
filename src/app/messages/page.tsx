@@ -80,6 +80,7 @@ export default function MessagesPage() {
     const [search, setSearch] = useState("");
     const [showNewMsg, setShowNewMsg] = useState(false);
     const [providerSearch, setProviderSearch] = useState("");
+    const [contextMenu, setContextMenu] = useState<{ x: number; y: number; channelId: string } | null>(null);
 
     useEffect(() => {
         const user = localStorage.getItem("user");
@@ -102,8 +103,8 @@ export default function MessagesPage() {
             try {
                 const data = await api<Channel[]>("/api/channels");
                 const list = Array.isArray(data) ? data : [];
-                // portal: only show DM conversations; normalize dates
-                setChannels(list.filter((c) => c.type === "dm" || c.type === "group_dm").map((c: any) => ({
+                // portal: only show DM conversations that have messages; normalize dates
+                setChannels(list.filter((c) => (c.type === "dm" || c.type === "group_dm") && c.lastMessage).map((c: any) => ({
                     ...c,
                     createdAt: normDate(c.createdAt),
                     lastMessage: c.lastMessage ? { ...c.lastMessage, createdAt: normDate(c.lastMessage.createdAt) } : c.lastMessage,
@@ -125,8 +126,9 @@ export default function MessagesPage() {
                 const data = await api<MessageItem[]>(`/api/channels/${activeChannelId}/messages?limit=100`);
                 const msgs = Array.isArray(data) ? data : [];
                 setMessages(msgs.map((m: any) => ({ ...m, createdAt: normDate(m.createdAt) })));
-                // mark read
+                // mark read and update local state
                 fetchWithAuth(`/api/channels/${activeChannelId}/read`, { method: "POST" }).catch(() => {});
+                setChannels((prev) => prev.map((c) => c.id === activeChannelId ? { ...c, unreadCount: 0 } : c));
             } catch (e) {
                 console.error("Failed to load messages:", e);
             } finally {
@@ -168,6 +170,17 @@ export default function MessagesPage() {
         }
     }, []);
 
+    /* mark read / unread */
+    const markAsRead = useCallback(async (channelId: string) => {
+        await api("/api/channels/" + channelId + "/read", { method: "POST" });
+        setChannels((prev) => prev.map((c) => c.id === channelId ? { ...c, unreadCount: 0 } : c));
+    }, []);
+
+    const markAsUnread = useCallback(async (channelId: string) => {
+        await api("/api/channels/" + channelId + "/unread", { method: "POST" });
+        setChannels((prev) => prev.map((c) => c.id === channelId ? { ...c, unreadCount: Math.max(c.unreadCount, 1) } : c));
+    }, []);
+
     /* helpers */
     const activeChannel = channels.find((c) => c.id === activeChannelId) || null;
 
@@ -181,9 +194,22 @@ export default function MessagesPage() {
     }, [currentUserId, currentUserName]);
 
     const filteredChannels = useMemo(() => {
-        if (!search.trim()) return channels;
-        const q = search.toLowerCase();
-        return channels.filter((c) => dmName(c).toLowerCase().includes(q));
+        let list = channels;
+        if (search.trim()) {
+            const q = search.toLowerCase();
+            list = list.filter((c) => dmName(c).toLowerCase().includes(q));
+        }
+        // Sort: unread first, then by last message time (most recent on top)
+        return [...list].sort((a, b) => {
+            // Unread channels first
+            const aUnread = a.unreadCount > 0 ? 1 : 0;
+            const bUnread = b.unreadCount > 0 ? 1 : 0;
+            if (bUnread !== aUnread) return bUnread - aUnread;
+            // Then by last message time
+            const aTime = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt).getTime() : 0;
+            const bTime = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt).getTime() : 0;
+            return bTime - aTime;
+        });
     }, [channels, search, dmName]);
 
     const filteredProviders = useMemo(() => {
@@ -261,29 +287,44 @@ export default function MessagesPage() {
                                 {filteredChannels.map((ch) => {
                                     const name = dmName(ch);
                                     const active = ch.id === activeChannelId;
+                                    const hasUnread = ch.unreadCount > 0;
                                     const preview = ch.lastMessage?.content || "";
                                     const time = ch.lastMessage?.createdAt ? relTime(ch.lastMessage.createdAt) : "";
                                     return (
                                         <button
                                             key={ch.id}
-                                            onClick={() => setActiveChannelId(ch.id)}
+                                            onClick={() => { setActiveChannelId(ch.id); if (hasUnread) markAsRead(ch.id); }}
+                                            onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, channelId: ch.id }); }}
                                             className={`w-full flex items-start gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${
-                                                active ? "bg-blue-50 ring-1 ring-blue-200" : "hover:bg-gray-100"
+                                                active ? "bg-blue-50 ring-1 ring-blue-200"
+                                                    : hasUnread ? "bg-blue-50/60 hover:bg-blue-50"
+                                                    : "hover:bg-gray-100"
                                             }`}
                                         >
-                                            <div className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold text-white ${avatarColor(name)}`}>
-                                                {nameInitials(name)}
+                                            <div className="relative shrink-0">
+                                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold text-white ${avatarColor(name)}`}>
+                                                    {nameInitials(name)}
+                                                </div>
+                                                {hasUnread && (
+                                                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-blue-600 border-2 border-white" />
+                                                )}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center justify-between">
-                                                    <span className={`text-sm truncate ${active ? "font-semibold text-blue-900" : "font-medium text-gray-900"}`}>
+                                                    <span className={`text-sm truncate ${
+                                                        hasUnread ? "font-bold text-gray-900"
+                                                            : active ? "font-semibold text-blue-900"
+                                                            : "font-medium text-gray-900"
+                                                    }`}>
                                                         {name}
                                                     </span>
-                                                    {time && <span className="text-[11px] text-gray-400 shrink-0 ml-2">{time}</span>}
+                                                    {time && <span className={`text-[11px] shrink-0 ml-2 ${hasUnread ? "font-semibold text-blue-600" : "text-gray-400"}`}>{time}</span>}
                                                 </div>
-                                                <p className="text-xs text-gray-500 truncate mt-0.5">{preview || "No messages yet"}</p>
+                                                <p className={`text-xs truncate mt-0.5 ${hasUnread ? "font-medium text-gray-700" : "text-gray-500"}`}>
+                                                    {preview || "No messages yet"}
+                                                </p>
                                             </div>
-                                            {ch.unreadCount > 0 && (
+                                            {hasUnread && (
                                                 <span className="shrink-0 mt-0.5 w-5 h-5 flex items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white">
                                                     {ch.unreadCount > 9 ? "9+" : ch.unreadCount}
                                                 </span>
@@ -295,6 +336,43 @@ export default function MessagesPage() {
                         )}
                     </div>
                 </div>
+
+                {/* Context menu for mark read/unread */}
+                {contextMenu && (
+                    <div
+                        className="fixed inset-0 z-50"
+                        onClick={() => setContextMenu(null)}
+                        onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
+                    >
+                        <div
+                            className="absolute bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[160px]"
+                            style={{ top: contextMenu.y, left: contextMenu.x }}
+                        >
+                            {(() => {
+                                const ch = channels.find((c) => c.id === contextMenu.channelId);
+                                const isUnread = ch && ch.unreadCount > 0;
+                                return (
+                                    <>
+                                        <button
+                                            onClick={() => { markAsRead(contextMenu.channelId); setContextMenu(null); }}
+                                            className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${!isUnread ? "text-gray-400" : "text-gray-700"}`}
+                                            disabled={!isUnread}
+                                        >
+                                            Mark as read
+                                        </button>
+                                        <button
+                                            onClick={() => { markAsUnread(contextMenu.channelId); setContextMenu(null); }}
+                                            className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${isUnread ? "text-gray-400" : "text-gray-700"}`}
+                                            disabled={!!isUnread}
+                                        >
+                                            Mark as unread
+                                        </button>
+                                    </>
+                                );
+                            })()}
+                        </div>
+                    </div>
+                )}
 
                 {/* ── Main Message Panel ── */}
                 <div className="flex-1 flex flex-col min-w-0">

@@ -25,7 +25,21 @@ export function useReports() {
         const res = await fetchWithAuth("/api/fhir/portal/reports/my");
         if (res.ok) {
           const data = await res.json();
-          setReports(data.data || []);
+          if (data.success === false) { setReports([]); return; }
+          const rawList = Array.isArray(data.data) ? data.data : (data.data?.content || []);
+          const mapped = rawList.map((item: any) => ({
+            id: item.id,
+            patientId: item.patientId,
+            category: item.category || item.type || "Report",
+            type: item.type || "report",
+            fileName: item.fileName ?? item.filename ?? item.testName ?? item.name ?? "Report",
+            contentType: item.contentType ?? "",
+            description: item.description || item.conclusion || item.title,
+            encrypted: item.encrypted ?? false,
+            createdDate: item.createdDate || item.orderDate || item.issued || item.documentDate || "",
+            lastModifiedDate: item.lastModifiedDate || "",
+          }));
+          setReports(mapped);
         } else if (res.status === 403) {
           // Forbidden - set empty list and suppress error for UI continuity
           setReports([]);

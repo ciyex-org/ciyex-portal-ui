@@ -35,6 +35,8 @@ export default function Dashboard() {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [vitals, setVitals] = useState<VitalReading[]>([]);
     const [unreadMessages, setUnreadMessages] = useState(0);
+    const [educationTopics, setEducationTopics] = useState<any[]>([]);
+    const [documents, setDocuments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -51,6 +53,8 @@ export default function Dashboard() {
                 loadAppointments(),
                 loadVitals(),
                 loadUnreadCount(),
+                loadEducation(),
+                loadDocuments(),
             ]);
             setLoading(false);
         };
@@ -65,7 +69,15 @@ export default function Dashboard() {
             return new Date(y, m - 1, d, h, min, s);
         }
         if (typeof v === "string" || typeof v === "number") {
-            const dt = new Date(v);
+            let dt = new Date(v);
+            if (isNaN(dt.getTime()) && typeof v === "string") {
+                // Try MM/DD/YYYY format
+                const parts = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+                if (parts) {
+                    const yr = parts[3].length === 2 ? 2000 + Number(parts[3]) : Number(parts[3]);
+                    dt = new Date(yr, Number(parts[1]) - 1, Number(parts[2]));
+                }
+            }
             return isNaN(dt.getTime()) ? null : dt;
         }
         return null;
@@ -84,7 +96,7 @@ export default function Dashboard() {
             // Show future appointments first, then recent past (last 7 days) as fallback
             const withDates = dataList
                 .map((a: any) => {
-                    const raw = a.start || a.appointmentStartDate || a.appointmentDate || a.appointmentDateTime || "";
+                    const raw = a.start || a.appointmentStartDate || a.appointmentDate || a.appointmentDateTime || a.date || a.startDateTime || "";
                     return { ...a, _dt: toDate(raw) };
                 })
                 .filter((a: any) => a._dt && a._dt.getTime() > sevenDaysAgo);
@@ -100,7 +112,7 @@ export default function Dashboard() {
             const upcoming = withDates
                 .slice(0, 3)
                 .map((a: any) => {
-                    const raw = a.start || a.appointmentStartDate || a.appointmentDate || a.appointmentDateTime || "";
+                    const raw = a.start || a.appointmentStartDate || a.appointmentDate || a.appointmentDateTime || a.date || a.startDateTime || "";
                     const startDt = toDate(raw);
                     const dateStr = startDt ? startDt.toISOString() : String(raw);
                     const timeStr = startDt
@@ -160,6 +172,68 @@ export default function Dashboard() {
             const total = (Array.isArray(channels) ? channels : channels.data || [])
                 .reduce((n: number, c: any) => n + (c.unreadCount || 0), 0);
             setUnreadMessages(total);
+        } catch { /* optional */ }
+    };
+
+    const loadEducation = async () => {
+        try {
+            const [topicsRes, assignRes] = await Promise.allSettled([
+                fetchWithAuth("/api/patient-education?page=0&size=100"),
+                fetchWithAuth("/api/portal/patient-education-assignments/my-assignments"),
+            ]);
+            const topics: any[] = [];
+            if (topicsRes.status === "fulfilled" && topicsRes.value.ok) {
+                const d = await topicsRes.value.json();
+                const raw = d.data;
+                const list = Array.isArray(raw) ? raw : (raw?.content || []);
+                topics.push(...list);
+            }
+            const assigned: any[] = [];
+            if (assignRes.status === "fulfilled" && assignRes.value.ok) {
+                const d = await assignRes.value.json();
+                const raw = Array.isArray(d.data) ? d.data : [];
+                assigned.push(...raw);
+            }
+            // Combine: show assigned first, then general topics
+            const combined = [
+                ...assigned.map((a: any) => ({
+                    id: a.id,
+                    title: a.materialTitle || a.topic?.title || "Education Material",
+                    category: a.materialCategory || a.topic?.category || "General",
+                    assigned: true,
+                })),
+                ...topics.slice(0, 6).map((t: any) => ({
+                    id: t.id,
+                    title: t.title || "Untitled",
+                    category: t.category || "General",
+                    assigned: false,
+                })),
+            ];
+            // Deduplicate by title
+            const seen = new Set<string>();
+            const unique = combined.filter((t) => {
+                if (seen.has(t.title)) return false;
+                seen.add(t.title);
+                return true;
+            });
+            setEducationTopics(unique.slice(0, 6));
+        } catch { /* optional */ }
+    };
+
+    const loadDocuments = async () => {
+        try {
+            const res = await fetchWithAuth("/api/fhir/portal/documents/my");
+            if (!res.ok) return;
+            const d = await res.json();
+            if (d.success === false) return;
+            const rawList = Array.isArray(d.data) ? d.data : (d.data?.content || []);
+            const mapped = rawList.slice(0, 5).map((item: any) => ({
+                id: item.id,
+                fileName: item.fileName ?? item.filename ?? item.name ?? "Document",
+                category: item.category || "Medical Records",
+                createdDate: item.documentDate || item.createdDate || item.created_date || item.uploadDate || "",
+            }));
+            setDocuments(mapped);
         } catch { /* optional */ }
     };
 
@@ -324,6 +398,62 @@ export default function Dashboard() {
                                     </div>
                                 ) : (
                                     <EmptyState icon={PillIcon} message="No active medications" />
+                                )}
+                            </Card>
+                        )}
+
+                        {/* Patient Education */}
+                        {isFeatureEnabled("education") && (
+                            <Card
+                                title="Patient Education"
+                                action={{ label: "View all", onClick: () => router.push("/education") }}
+                            >
+                                {educationTopics.length > 0 ? (
+                                    <div className="divide-y divide-gray-100">
+                                        {educationTopics.slice(0, 4).map((t: any) => (
+                                            <div key={t.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                                                <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center">
+                                                    <EduIcon />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-semibold text-gray-900 truncate">{t.title}</p>
+                                                    <p className="text-xs text-gray-500">{t.category}{t.assigned ? " \u00b7 Assigned" : ""}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <EmptyState
+                                        icon={EduIcon}
+                                        message="No topics assigned yet"
+                                        action={{ label: "Browse topics", onClick: () => router.push("/education") }}
+                                    />
+                                )}
+                            </Card>
+                        )}
+
+                        {/* Medical Reports & Documents */}
+                        {isFeatureEnabled("documents") && (
+                            <Card
+                                title="Medical Reports & Documents"
+                                action={{ label: "View all", onClick: () => router.push("/documents") }}
+                            >
+                                {documents.length > 0 ? (
+                                    <div className="divide-y divide-gray-100">
+                                        {documents.slice(0, 4).map((d: any) => (
+                                            <div key={d.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                                                <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center">
+                                                    <DocIcon />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-semibold text-gray-900 truncate">{d.fileName}</p>
+                                                    <p className="text-xs text-gray-500">{d.category}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <EmptyState icon={DocIcon} message="No documents available" />
                                 )}
                             </Card>
                         )}

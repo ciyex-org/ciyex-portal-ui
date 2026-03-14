@@ -2,6 +2,7 @@
 
 import AdminLayout from "@/app/(admin)/layout";
 import { useDocuments } from "@/hooks/useDocuments";
+import { useReports } from "@/hooks/useReports";
 import { BarChart3, FolderOpen, Lock, AlertCircle, Eye, Download, Archive } from "lucide-react";
 
 function fmtDate(d?: string) {
@@ -24,7 +25,13 @@ function categoryBadge(cat?: string) {
 }
 
 export default function ReportsPage() {
-    const { documents, loading, error, downloadDocument, viewDocument, archiveDocument } = useDocuments();
+    const { reports, loading: reportsLoading, error: reportsError } = useReports();
+    const { documents: docs, loading: docsLoading, error: docsError, downloadDocument, viewDocument, archiveDocument } = useDocuments();
+
+    // Use reports from dedicated endpoint; fall back to documents if reports are empty
+    const loading = reportsLoading || docsLoading;
+    const error = reportsError && docsError ? reportsError : null;
+    const documents = reports.length > 0 ? reports : docs;
 
     return (
         <AdminLayout>

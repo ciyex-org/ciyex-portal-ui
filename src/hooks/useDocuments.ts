@@ -36,6 +36,11 @@ export function useDocuments() {
       const res = await fetchWithAuth("/api/fhir/portal/documents/my");
       if (res.ok) {
         const data = await res.json();
+        // Handle success:false responses (patient not linked, etc.)
+        if (data.success === false) {
+          setDocuments([]);
+          return;
+        }
         const rawList = Array.isArray(data.data) ? data.data : (data.data?.content || []);
         const mapped = rawList.map((item: any) => ({
           id: item.id,
@@ -52,15 +57,15 @@ export function useDocuments() {
         }));
         setDocuments(mapped);
       } else if (res.status === 403) {
-        // Forbidden - set empty list and suppress error for UI continuity
         setDocuments([]);
       } else {
+        // Gracefully handle errors - show empty state instead of error
         console.error("Documents fetch failed:", res.status);
-        setError(`HTTP ${res.status}`);
+        setDocuments([]);
       }
     } catch (e) {
       console.error("Documents error:", e);
-      setError("Network or auth error");
+      setDocuments([]);
     } finally {
       setLoading(false);
     }

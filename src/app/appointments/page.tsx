@@ -227,7 +227,15 @@ export default function AppointmentsPage() {
 
         setSubmitting(true);
         try {
-            // Map to FHIR appointment tab_field_config keys
+            // Format date parts for legacy fields
+            const mm = String(d.getMonth() + 1).padStart(2, "0");
+            const dd2 = String(d.getDate()).padStart(2, "0");
+            const yyyy = d.getFullYear();
+            const legacyDate = `${mm}/${dd2}/${yyyy}`;
+            const legacyTime = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:00`;
+            const endLegacyTime = `${String(endDt.getHours()).padStart(2, "0")}:${String(endDt.getMinutes()).padStart(2, "0")}:00`;
+
+            // Map to FHIR appointment tab_field_config keys + legacy fields
             const payload: Record<string, any> = {
                 appointmentType: form.visitType || "Consultation",
                 start: startIso,
@@ -237,18 +245,24 @@ export default function AppointmentsPage() {
                 reason: form.reason || "",
                 priority: (form.priority || "routine").toLowerCase(),
                 status: "proposed",
-                // Also send legacy fields for backward compat
                 visitType: form.visitType,
                 providerId: Number(form.providerId),
                 locationId: Number(form.locationId),
+                appointmentStartDate: legacyDate,
+                appointmentEndDate: legacyDate,
+                appointmentStartTime: legacyTime,
+                appointmentEndTime: endLegacyTime,
+                appointmentDate: form.date,
+                appointmentTime: legacyTime,
+                date: form.date,
+                time: legacyTime,
             };
             const res = await fetchWithAuth("/api/portal/appointments", {
                 method: "POST", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
             const saved = await safeJson(res);
-            if (!res.ok && saved.success === false) throw new Error(saved.message || `HTTP ${res.status}`);
-            if (!res.ok && !saved.data) throw new Error(saved.message || "Could not create appointment.");
+            if (!res.ok || saved.success === false) throw new Error(saved.message || "Failed to create appointment");
             const apptData = saved.data || saved;
             if (apptData && typeof apptData === "object" && !Array.isArray(apptData)) setAppointments((p) => [...p, apptData]);
             setShowModal(false);

@@ -28,19 +28,32 @@ export default function UserAddressCard() {
         setSaving(true);
         setSaveError(null);
         try {
-            const res = await fetchWithAuth("/api/portal/patient/me", {
+            // Map address fields to demographics DTO format
+            const payload = {
+                firstName: formData.firstName || user.firstName,
+                lastName: formData.lastName || user.lastName,
+                address: formData.street || "",
+                addressLine2: formData.street2 || "",
+                city: formData.city || "",
+                state: formData.state || "",
+                postalCode: formData.postalCode || "",
+                country: formData.country || "",
+                contactEmail: formData.email || user.email,
+                phoneMobile: formData.phone || user.phone,
+            };
+            const res = await fetchWithAuth("/api/portal/patients/me/demographics", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(payload),
             });
-            if (res.ok) {
+            const resData = await res.json().catch(() => ({}));
+            if (res.ok && resData.success !== false) {
                 const updated = { ...user, ...formData };
                 localStorage.setItem("user", JSON.stringify(updated));
                 setUser(updated);
                 closeModal();
             } else {
-                const errData = await res.json().catch(() => ({}));
-                setSaveError(errData.message || `Save failed (HTTP ${res.status})`);
+                setSaveError(resData.message || `Save failed (HTTP ${res.status})`);
             }
         } catch {
             setSaveError("Network error. Please try again.");

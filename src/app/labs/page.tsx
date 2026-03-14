@@ -62,8 +62,8 @@ export default function LabsPage() {
             setLabs(raw.map((item: any) => ({
                 id: item.id,
                 testName: item.testName || item.testDisplay || item.orderName || item.test_name || item.name || item.testCode || "Lab Order",
-                orderedDate: normalizeDate(item.orderDate || item.orderDateTime || item.effectiveDate || item.orderedDate || item.ordered_date || item.issued || item._lastUpdated) || "",
-                collectionDate: normalizeDate(item.collectedDate || item.collectionDate || item.collection_date || item.specimenCollectedDate || item.effectiveDateTime || item.effectivePeriod?.start || item.performedDateTime || item.occurrenceDateTime || item.sampleDate || item.collectedAt),
+                orderedDate: normalizeDate(item.orderDate || item.orderDateTime || item.orderedDate || item.ordered_date || item.issued || item._lastUpdated) || "",
+                collectionDate: normalizeDate(item.effectiveDate || item.collectedDate || item.collectionDate || item.collection_date || item.specimenCollectedDate || item.effectiveDateTime || item.effectivePeriod?.start || item.performedDateTime || item.occurrenceDateTime || item.sampleDate || item.collectedAt),
                 resultDate: normalizeDate(item.reportedDate || item.resultDate || item.result_date || item.resultDateTime || item.signedAt || item.issued || item.completedDate),
                 status: item.status || "unknown",
                 result: item.conclusion || item.result || item.resultValue || undefined,

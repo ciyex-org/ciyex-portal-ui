@@ -2,8 +2,9 @@
 
 import AdminLayout from "@/app/(admin)/layout";
 import { useDocuments } from "@/hooks/useDocuments";
-import { useReports } from "@/hooks/useReports";
-import { BarChart3, FolderOpen, Lock, AlertCircle, Eye, Download, Archive } from "lucide-react";
+import { useReports, ApiReport } from "@/hooks/useReports";
+import { BarChart3, FolderOpen, Lock, AlertCircle, Eye, Download, Archive, X } from "lucide-react";
+import { useState } from "react";
 
 function fmtDate(d?: string) {
     if (!d) return "—";
@@ -24,14 +25,34 @@ function categoryBadge(cat?: string) {
     return <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>{cat || "Report"}</span>;
 }
 
+/** Fields to hide in the detail modal (internal/meta fields) */
+const HIDDEN_FIELDS = new Set([
+    "id", "fhirId", "patientId", "contentType", "encrypted", "archived",
+    "lastModifiedDate", "type", "category", "fileName", "description",
+    "createdDate", "resourceType",
+]);
+
+/** Pretty-print a field key */
+function labelFromKey(key: string): string {
+    return key
+        .replace(/([A-Z])/g, " $1")
+        .replace(/_/g, " ")
+        .replace(/^\w/, c => c.toUpperCase())
+        .trim();
+}
+
 export default function ReportsPage() {
     const { reports, loading: reportsLoading, error: reportsError } = useReports();
     const { documents: docs, loading: docsLoading, error: docsError, downloadDocument, viewDocument, archiveDocument } = useDocuments();
+    const [selectedReport, setSelectedReport] = useState<ApiReport | null>(null);
 
-    // Use reports from dedicated endpoint; fall back to documents if reports are empty
     const loading = reportsLoading || docsLoading;
     const error = reportsError && docsError ? reportsError : null;
-    const documents = reports.length > 0 ? reports : docs;
+
+    // Reports from the reports endpoint are lab results (structured data, not files).
+    // Documents from the documents endpoint are actual files (DocumentReferences with S3 storage).
+    const isShowingReports = reports.length > 0;
+    const displayItems = isShowingReports ? reports : docs;
 
     return (
         <AdminLayout>
@@ -53,7 +74,7 @@ export default function ReportsPage() {
                             <p className="text-sm text-amber-700 mt-1">Please contact your healthcare provider if you believe you should have access.</p>
                         </div>
                     </div>
-                ) : documents.length === 0 ? (
+                ) : displayItems.length === 0 ? (
                     <div className="text-center py-16">
                         <BarChart3 className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                         <h3 className="text-sm font-semibold text-gray-900">No reports found</h3>
@@ -67,21 +88,21 @@ export default function ReportsPage() {
                                 <div className="p-2 bg-blue-50 rounded-lg"><BarChart3 className="h-5 w-5 text-blue-600" /></div>
                                 <div>
                                     <p className="text-xs text-gray-500">Total Reports</p>
-                                    <p className="text-lg font-bold text-gray-900">{documents.length}</p>
+                                    <p className="text-lg font-bold text-gray-900">{displayItems.length}</p>
                                 </div>
                             </div>
                             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3">
                                 <div className="p-2 bg-green-50 rounded-lg"><FolderOpen className="h-5 w-5 text-green-600" /></div>
                                 <div>
                                     <p className="text-xs text-gray-500">Report Types</p>
-                                    <p className="text-lg font-bold text-gray-900">{new Set(documents.map((r: any) => r.category)).size}</p>
+                                    <p className="text-lg font-bold text-gray-900">{new Set(displayItems.map((r: any) => r.category)).size}</p>
                                 </div>
                             </div>
                             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3">
                                 <div className="p-2 bg-purple-50 rounded-lg"><Lock className="h-5 w-5 text-purple-600" /></div>
                                 <div>
                                     <p className="text-xs text-gray-500">Encrypted</p>
-                                    <p className="text-lg font-bold text-gray-900">{documents.filter((r: any) => r.encrypted).length}</p>
+                                    <p className="text-lg font-bold text-gray-900">{displayItems.filter((r: any) => r.encrypted).length}</p>
                                 </div>
                             </div>
                         </div>
@@ -100,7 +121,7 @@ export default function ReportsPage() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
-                                        {documents.map((report: any, i: number) => (
+                                        {displayItems.map((report: any, i: number) => (
                                             <tr key={report.id || i} className="hover:bg-gray-50/50 transition-colors">
                                                 <td className="px-4 py-3">
                                                     <span className="text-sm font-medium text-gray-900">{report.fileName}</span>
@@ -121,21 +142,32 @@ export default function ReportsPage() {
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-2">
-                                                        <button
-                                                            onClick={() => viewDocument(report.id)}
-                                                            className="p-1 text-blue-600 hover:text-blue-800 transition-colors" title="View"
-                                                        ><Eye className="h-4 w-4" /></button>
-                                                        <button
-                                                            onClick={() => downloadDocument(report.id)}
-                                                            className="p-1 text-green-600 hover:text-green-800 transition-colors" title="Download"
-                                                        ><Download className="h-4 w-4" /></button>
-                                                        {report.archived ? (
-                                                            <span className="p-1 text-gray-400"><Archive className="h-4 w-4" /></span>
-                                                        ) : (
+                                                        {isShowingReports ? (
+                                                            /* Reports are lab results — view details inline */
                                                             <button
-                                                                onClick={() => archiveDocument(report.id)}
-                                                                className="p-1 text-gray-500 hover:text-gray-700 transition-colors" title="Archive"
-                                                            ><Archive className="h-4 w-4" /></button>
+                                                                onClick={() => setSelectedReport(report)}
+                                                                className="p-1 text-blue-600 hover:text-blue-800 transition-colors" title="View Details"
+                                                            ><Eye className="h-4 w-4" /></button>
+                                                        ) : (
+                                                            /* Documents — can be downloaded as files */
+                                                            <>
+                                                                <button
+                                                                    onClick={() => viewDocument(report.id)}
+                                                                    className="p-1 text-blue-600 hover:text-blue-800 transition-colors" title="View"
+                                                                ><Eye className="h-4 w-4" /></button>
+                                                                <button
+                                                                    onClick={() => downloadDocument(report.id)}
+                                                                    className="p-1 text-green-600 hover:text-green-800 transition-colors" title="Download"
+                                                                ><Download className="h-4 w-4" /></button>
+                                                                {report.archived ? (
+                                                                    <span className="p-1 text-gray-400"><Archive className="h-4 w-4" /></span>
+                                                                ) : (
+                                                                    <button
+                                                                        onClick={() => archiveDocument(report.id)}
+                                                                        className="p-1 text-gray-500 hover:text-gray-700 transition-colors" title="Archive"
+                                                                    ><Archive className="h-4 w-4" /></button>
+                                                                )}
+                                                            </>
                                                         )}
                                                     </div>
                                                 </td>
@@ -145,12 +177,53 @@ export default function ReportsPage() {
                                 </table>
                             </div>
                             <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/30 text-xs text-gray-500 text-right">
-                                {documents.length} report{documents.length !== 1 ? "s" : ""}
+                                {displayItems.length} report{displayItems.length !== 1 ? "s" : ""}
                             </div>
                         </div>
                     </>
                 )}
             </div>
+
+            {/* Report Detail Modal (for lab results) */}
+            {selectedReport && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedReport(null)}>
+                    <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+                            <div>
+                                <h2 className="text-lg font-semibold text-gray-900">{selectedReport.fileName}</h2>
+                                {selectedReport.description && (
+                                    <p className="text-sm text-gray-500 mt-0.5">{selectedReport.description}</p>
+                                )}
+                            </div>
+                            <button onClick={() => setSelectedReport(null)} className="p-1 text-gray-400 hover:text-gray-600">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="px-5 py-4 overflow-y-auto max-h-[60vh] space-y-3">
+                            <div className="flex items-center gap-2 mb-4">
+                                {categoryBadge(selectedReport.category)}
+                                <span className="text-sm text-gray-500">{fmtDate(selectedReport.createdDate)}</span>
+                            </div>
+                            <div className="space-y-2">
+                                {Object.entries(selectedReport)
+                                    .filter(([key, val]) => !HIDDEN_FIELDS.has(key) && val != null && val !== "" && typeof val !== "object")
+                                    .map(([key, val]) => (
+                                        <div key={key} className="flex justify-between items-start py-2 border-b border-gray-100 last:border-0">
+                                            <span className="text-sm font-medium text-gray-600 min-w-[140px]">{labelFromKey(key)}</span>
+                                            <span className="text-sm text-gray-900 text-right">{String(val)}</span>
+                                        </div>
+                                    ))
+                                }
+                            </div>
+                        </div>
+                        <div className="px-5 py-3 border-t border-gray-200 bg-gray-50/50 flex justify-end">
+                            <button onClick={() => setSelectedReport(null)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AdminLayout>
     );
 }

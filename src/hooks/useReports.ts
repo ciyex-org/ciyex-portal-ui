@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
 
 export type ApiReport = {
-  id: number;
+  id: number | string;
+  fhirId?: string;
   patientId: number;
   category: string;
   type: string;
@@ -12,6 +13,8 @@ export type ApiReport = {
   encrypted: boolean;
   createdDate?: string;
   lastModifiedDate?: string;
+  /** Lab result fields — reports are structured data, not downloadable files */
+  [key: string]: any;
 };
 
 export function useReports() {
@@ -28,7 +31,9 @@ export function useReports() {
           if (data.success === false) { setReports([]); return; }
           const rawList = Array.isArray(data.data) ? data.data : (data.data?.content || []);
           const mapped = rawList.map((item: any) => ({
+            ...item,
             id: item.id,
+            fhirId: item.fhirId || item.id,
             patientId: item.patientId,
             category: item.category || item.type || "Report",
             type: item.type || "report",
@@ -36,7 +41,7 @@ export function useReports() {
             contentType: item.contentType ?? "",
             description: item.description || item.conclusion || item.title,
             encrypted: item.encrypted ?? false,
-            createdDate: item.createdDate || item.orderDate || item.issued || item.documentDate || "",
+            createdDate: item.createdDate || item.orderDate || item.issued || item.documentDate || item.effectiveDate || "",
             lastModifiedDate: item.lastModifiedDate || "",
           }));
           setReports(mapped);

@@ -88,26 +88,27 @@ export default function Dashboard() {
             const res = await fetchWithAuth("/api/portal/appointments");
             if (!res.ok) return;
             const d = await res.json();
+            if (d.success === false) return;
             const rawData = d.data ?? d;
             const dataList = Array.isArray(rawData) ? rawData : (rawData?.content || []);
             if (!dataList.length) return;
             const now = Date.now();
-            const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
-            // Show future appointments first, then recent past (last 7 days) as fallback
+            // Parse all appointments with dates, keep all (no strict date filter)
             const withDates = dataList
                 .map((a: any) => {
                     const raw = a.start || a.appointmentStartDate || a.appointmentDate || a.appointmentDateTime || a.date || a.startDateTime || "";
                     return { ...a, _dt: toDate(raw) };
-                })
-                .filter((a: any) => a._dt && a._dt.getTime() > sevenDaysAgo);
+                });
             // Sort: future first (ascending), then past (descending)
             withDates.sort((a: any, b: any) => {
-                const aFuture = a._dt.getTime() > now;
-                const bFuture = b._dt.getTime() > now;
+                const aTime = a._dt?.getTime() ?? 0;
+                const bTime = b._dt?.getTime() ?? 0;
+                const aFuture = aTime > now;
+                const bFuture = bTime > now;
                 if (aFuture && !bFuture) return -1;
                 if (!aFuture && bFuture) return 1;
-                if (aFuture && bFuture) return a._dt.getTime() - b._dt.getTime();
-                return b._dt.getTime() - a._dt.getTime();
+                if (aFuture && bFuture) return aTime - bTime;
+                return bTime - aTime;
             });
             const upcoming = withDates
                 .slice(0, 3)
@@ -184,15 +185,17 @@ export default function Dashboard() {
             const topics: any[] = [];
             if (topicsRes.status === "fulfilled" && topicsRes.value.ok) {
                 const d = await topicsRes.value.json();
-                const raw = d.data;
+                const raw = d.data ?? d;
+                // Handle { content: [...] }, direct array, or { data: { content: [...] } }
                 const list = Array.isArray(raw) ? raw : (raw?.content || []);
                 topics.push(...list);
             }
             const assigned: any[] = [];
             if (assignRes.status === "fulfilled" && assignRes.value.ok) {
                 const d = await assignRes.value.json();
-                const raw = Array.isArray(d.data) ? d.data : [];
-                assigned.push(...raw);
+                const raw = d.data ?? d;
+                const list = Array.isArray(raw) ? raw : (raw?.content || []);
+                assigned.push(...list);
             }
             // Combine: show assigned first, then general topics
             const combined = [

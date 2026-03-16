@@ -23,10 +23,15 @@ const DEFAULT_IDLE_MINUTES = 30;
 // Warning shown 2 minutes before idle timeout fires
 const WARNING_BEFORE_MS = 2 * 60 * 1000;
 
+// Minimum interval between refresh attempts to prevent tight loops (10 seconds)
+const MIN_REFRESH_INTERVAL_MS = 10_000;
+
 export default function SessionManager() {
   const idleTimeoutId = useRef<number | null>(null);
   const warningTimeoutId = useRef<number | null>(null);
   const refreshTimerId = useRef<number | null>(null);
+  const lastRefreshAttempt = useRef<number>(0);
+  const scheduleRef = useRef<(() => void) | null>(null);
   const [showWarning, setShowWarning] = useState(false);
   const [countdown, setCountdown] = useState(120);
   const countdownRef = useRef<number | null>(null);
@@ -38,11 +43,15 @@ export default function SessionManager() {
       window.clearInterval(countdownRef.current);
       countdownRef.current = null;
     }
-    await refreshAccessToken();
+    const ok = await refreshAccessToken();
+    // Re-schedule the proactive refresh timer after successful refresh
+    if (ok && scheduleRef.current) {
+      scheduleRef.current();
+    }
   }, []);
 
   useEffect(() => {
-    let idleMs = DEFAULT_IDLE_MINUTES * 60 * 1000;
+    const idleMs = DEFAULT_IDLE_MINUTES * 60 * 1000;
 
     // ── Proactive JWT refresh ───────────────────────────────────
     const scheduleTokenRefresh = () => {
@@ -59,7 +68,10 @@ export default function SessionManager() {
       const secsUntilExpiry = payload.exp - nowSec;
 
       if (secsUntilExpiry <= 0) {
-        // Token already expired — try to refresh immediately
+        // Token already expired — try to refresh immediately (with rate limit)
+        const now = Date.now();
+        if (now - lastRefreshAttempt.current < MIN_REFRESH_INTERVAL_MS) return;
+        lastRefreshAttempt.current = now;
         refreshAccessToken().then((ok) => {
           if (ok) scheduleTokenRefresh();
         });
@@ -67,23 +79,26 @@ export default function SessionManager() {
       }
 
       // Refresh REFRESH_BEFORE_EXPIRY_SEC seconds before expiry
-      const refreshInMs =
-        Math.max(secsUntilExpiry - REFRESH_BEFORE_EXPIRY_SEC, 0) * 1000;
+      // Ensure at least MIN_REFRESH_INTERVAL_MS to prevent tight loops
+      const refreshInMs = Math.max(
+        (secsUntilExpiry - REFRESH_BEFORE_EXPIRY_SEC) * 1000,
+        MIN_REFRESH_INTERVAL_MS
+      );
 
       refreshTimerId.current = window.setTimeout(async () => {
+        lastRefreshAttempt.current = Date.now();
         const ok = await refreshAccessToken();
         if (ok) {
-          console.log("Proactive token refresh succeeded");
           scheduleTokenRefresh();
         } else {
-          console.warn("Proactive token refresh failed");
+          // Refresh failed — check if token still has time left
           const t = localStorage.getItem("token");
           const p = decodeJwt(t);
           const now2 = Math.floor(Date.now() / 1000);
           const left = p?.exp ? p.exp - now2 : 0;
           if (left > 0) {
             setShowWarning(true);
-            setCountdown(left);
+            setCountdown(Math.min(left, 120));
             if (countdownRef.current) window.clearInterval(countdownRef.current);
             countdownRef.current = window.setInterval(() => {
               setCountdown((prev) => {
@@ -100,11 +115,17 @@ export default function SessionManager() {
       }, refreshInMs);
     };
 
+    // Store ref so dismissWarning can call it
+    scheduleRef.current = scheduleTokenRefresh;
+
     // ── Idle timeout ────────────────────────────────────────────
     const resetIdleTimer = () => {
       try {
         sessionStorage.setItem("lastActivity", String(Date.now()));
       } catch {}
+
+      // If warning is showing due to idle, dismiss it on activity
+      // (token refresh warnings are handled separately by dismissWarning)
 
       if (idleTimeoutId.current) window.clearTimeout(idleTimeoutId.current);
       if (warningTimeoutId.current) window.clearTimeout(warningTimeoutId.current);
@@ -142,7 +163,6 @@ export default function SessionManager() {
         }
       } catch {}
 
-      console.log(`Idle timeout reached (${DEFAULT_IDLE_MINUTES} minutes), signing out...`);
       setShowWarning(false);
       if (countdownRef.current) window.clearInterval(countdownRef.current);
       try { clearAuth(); } catch {}
@@ -169,6 +189,7 @@ export default function SessionManager() {
       if (warningTimeoutId.current) window.clearTimeout(warningTimeoutId.current);
       if (refreshTimerId.current) window.clearTimeout(refreshTimerId.current);
       if (countdownRef.current) window.clearInterval(countdownRef.current);
+      scheduleRef.current = null;
     };
   }, []);
 

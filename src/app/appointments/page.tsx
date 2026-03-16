@@ -258,11 +258,14 @@ export default function AppointmentsPage() {
                 time: legacyTime,
             };
             const res = await fetchWithAuth("/api/portal/appointments", {
-                method: "POST", headers: { "Content-Type": "application/json" },
+                method: "POST",
                 body: JSON.stringify(payload),
             });
             const saved = await safeJson(res);
-            if (!res.ok || saved.success === false) throw new Error(saved.message || "Failed to create appointment");
+            if (!res.ok || saved.success === false) {
+                const errMsg = saved.message || saved.error || (res.status === 401 ? "Session expired. Please sign in again." : res.status === 403 ? "You don't have permission to create appointments." : "Failed to create appointment");
+                throw new Error(errMsg);
+            }
             const apptData = saved.data || saved;
             if (apptData && typeof apptData === "object" && !Array.isArray(apptData)) setAppointments((p) => [...p, apptData]);
             setShowModal(false);

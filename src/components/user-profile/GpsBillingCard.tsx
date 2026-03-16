@@ -1,6 +1,6 @@
 "use client";
-import { getEnv } from "@/utils/env";
 import React, { useState, useEffect } from "react";
+import { fetchWithAuth } from "@/utils/fetchWithAuth";
 
 interface BillingCardData {
     id: number;
@@ -48,17 +48,37 @@ const GpsBillingCard: React.FC = () => {
         setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
     };
 
+    const getUserId = (): string | null => {
+        if (typeof window === "undefined") return null;
+        // Try userId from localStorage (set during auth)
+        const userId = localStorage.getItem("userId");
+        if (userId) return userId;
+        // Try portalUserId
+        const portalUserId = localStorage.getItem("portalUserId");
+        if (portalUserId) return portalUserId;
+        // Try to extract from user object
+        try {
+            const userStr = localStorage.getItem("user");
+            if (userStr) {
+                const user = JSON.parse(userStr);
+                return user.id || user.userId || user.portalUserId || null;
+            }
+        } catch {}
+        return null;
+    };
+
     const loadGpsCards = async () => {
         try {
-            // Note: You'll need to implement fetchWithAuth utility for portal UI
-            const response = await fetch(`${getEnv("NEXT_PUBLIC_API_URL")}/api/gps/billing/cards/user/1`, {
-                headers: { "x-org-id": "1" },
-            });
-            
+            const userId = getUserId();
+            if (!userId) {
+                console.warn("No userId available for GPS card loading");
+                return;
+            }
+            const response = await fetchWithAuth(`/api/gps/billing/cards/user/${userId}`);
             if (response.ok) {
                 const result: ApiResponse<BillingCardData[]> = await response.json();
                 if (result.success) {
-                    setCards(result.data);
+                    setCards(result.data || []);
                 }
             }
         } catch (error) {
@@ -103,8 +123,14 @@ const GpsBillingCard: React.FC = () => {
             return;
         }
 
+        const userId = getUserId();
+        if (!userId) {
+            showToast("Unable to identify user. Please sign in again.", "error");
+            return;
+        }
+
         setIsLoading(true);
-        
+
         try {
             const brand = getCardBrand(formData.cardNumber);
             const last4 = formData.cardNumber.replace(/\s/g, "").slice(-4);
@@ -115,15 +141,11 @@ const GpsBillingCard: React.FC = () => {
                 last4,
                 expMonth: parseInt(formData.expMonth),
                 expYear: parseInt(formData.expYear),
-                userId: 1, // This should come from user context
+                userId: parseInt(userId),
             };
 
-            const response = await fetch(`${getEnv("NEXT_PUBLIC_API_URL")}/api/gps/billing/tokenize`, {
+            const response = await fetchWithAuth("/api/gps/billing/tokenize", {
                 method: "POST",
-                headers: { 
-                    "Content-Type": "application/json", 
-                    "x-org-id": "1" 
-                },
                 body: JSON.stringify(cardData),
             });
 
@@ -133,7 +155,6 @@ const GpsBillingCard: React.FC = () => {
                     showToast("GPS card saved successfully!", "success");
                     setShowAddForm(false);
                     loadGpsCards();
-                    // Reset form
                     setFormData({
                         firstName: "",
                         lastName: "",
@@ -150,7 +171,8 @@ const GpsBillingCard: React.FC = () => {
                     showToast(result.message || "Failed to save GPS card", "error");
                 }
             } else {
-                showToast("Failed to save GPS card", "error");
+                const errorData = await response.json().catch(() => null);
+                showToast(errorData?.message || "Failed to save GPS card", "error");
             }
         } catch (error) {
             console.error("GPS card save error:", error);
@@ -162,9 +184,8 @@ const GpsBillingCard: React.FC = () => {
 
     const deleteCard = async (cardId: number) => {
         try {
-            const response = await fetch(`${getEnv("NEXT_PUBLIC_API_URL")}/api/gps/billing/cards/${cardId}`, {
+            const response = await fetchWithAuth(`/api/gps/billing/cards/${cardId}`, {
                 method: "DELETE",
-                headers: { "x-org-id": "1" },
             });
 
             if (response.ok) {

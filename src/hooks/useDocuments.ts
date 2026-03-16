@@ -73,11 +73,23 @@ export function useDocuments() {
     }
   }, []);
 
+  /**
+   * Build a list of IDs to try for download/view.
+   * Prioritize fhirId (needed for actual file retrieval) over numeric DB id.
+   */
+  const getDocumentIds = (docId: number): string[] => {
+    const doc = documents.find(d => d.id === docId);
+    const ids: string[] = [];
+    // fhirId first — backend download uses fhirId to locate the actual file
+    if (doc?.fhirId) ids.push(String(doc.fhirId));
+    // Then the numeric id as fallback
+    if (!ids.includes(String(docId))) ids.push(String(docId));
+    return ids;
+  };
+
   const downloadDocument = async (docId: number) => {
     const doc = documents.find(d => d.id === docId);
-    // Try both the hash-based id and fhirId — backend matches on either
-    const ids = [String(docId)];
-    if (doc?.fhirId && String(doc.fhirId) !== String(docId)) ids.push(doc.fhirId);
+    const ids = getDocumentIds(docId);
 
     for (const id of ids) {
       const paths = [
@@ -116,10 +128,7 @@ export function useDocuments() {
   };
 
   const viewDocument = async (docId: number): Promise<string | null> => {
-    const doc = documents.find(d => d.id === docId);
-    // Try both the hash-based id and fhirId — backend matches on either
-    const ids = [String(docId)];
-    if (doc?.fhirId && String(doc.fhirId) !== String(docId)) ids.push(doc.fhirId);
+    const ids = getDocumentIds(docId);
 
     for (const id of ids) {
       const paths = [

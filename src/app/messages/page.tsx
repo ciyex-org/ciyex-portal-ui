@@ -589,7 +589,7 @@ function MsgItem({ msg, isMe, showHeader }: { msg: MessageItem; isMe: boolean; s
             <div className="flex-1 min-w-0">
                 {showHeader && (
                     <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-sm font-semibold text-gray-900">{msg.senderName}</span>
+                        <span className="text-sm font-semibold text-gray-900">{msg.senderName || "Unknown"}</span>
                         <span className="text-xs text-gray-400">{time}</span>
                         {msg.isPinned && <Pin className="h-3 w-3 text-amber-500" />}
                     </div>
@@ -600,17 +600,32 @@ function MsgItem({ msg, isMe, showHeader }: { msg: MessageItem; isMe: boolean; s
                 {msg.attachments && msg.attachments.length > 0 && (
                     <div className="mt-2 space-y-1.5">
                         {msg.attachments.map((a) => (
-                            <a
+                            <button
                                 key={a.id}
-                                href={a.fileUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                                type="button"
+                                onClick={async () => {
+                                    try {
+                                        const res = await fetchWithAuth(a.fileUrl);
+                                        if (!res.ok) throw new Error("Download failed");
+                                        const blob = await res.blob();
+                                        const url = URL.createObjectURL(blob);
+                                        const link = document.createElement("a");
+                                        link.href = url;
+                                        link.download = a.fileName;
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        document.body.removeChild(link);
+                                        setTimeout(() => URL.revokeObjectURL(url), 1000);
+                                    } catch {
+                                        window.open(a.fileUrl, "_blank");
+                                    }
+                                }}
                                 className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg text-sm text-gray-700 hover:bg-gray-200 transition-colors"
                             >
                                 <Paperclip className="h-3.5 w-3.5 text-gray-500" />
                                 <span className="truncate max-w-[200px]">{a.fileName}</span>
                                 <span className="text-xs text-gray-400">{formatBytes(a.fileSize)}</span>
-                            </a>
+                            </button>
                         ))}
                     </div>
                 )}

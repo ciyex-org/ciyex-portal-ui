@@ -19,34 +19,9 @@ export async function GET(
     const tenantName = request.headers.get('x-tenant-name');
     if (tenantName) hdrs['X-Tenant-Name'] = tenantName;
 
-    // Try multiple backend paths — the backend may serve documents at different endpoints
-    const paths = [
-      `/api/fhir/portal/documents/${docId}/download`,
-      `/api/portal/documents/${docId}/download`,
-      `/api/documents/${docId}/download`,
-      `/api/fhir/documents/${docId}/download`,
-    ];
-
-    let response: Response | null = null;
-    for (const path of paths) {
-      try {
-        const res = await fetch(`${BACKEND_URL}${path}`, { method: 'GET', headers: hdrs });
-        if (res.ok) {
-          response = res;
-          break;
-        }
-        // For 500/403, keep trying other paths — the error might be path-specific
-        if (res.status === 404 || res.status === 500 || res.status === 403) {
-          if (!response || response.status === 404) response = res;
-          continue;
-        }
-        // For other errors (401 etc.), stop trying
-        response = res;
-        break;
-      } catch {
-        // Network error on this path — try next
-      }
-    }
+    // Use the canonical portal documents endpoint
+    const backendPath = `/api/fhir/portal/documents/${docId}/download`;
+    const response = await fetch(`${BACKEND_URL}${backendPath}`, { method: 'GET', headers: hdrs });
 
     if (!response || !response.ok) {
       const status = response?.status || 404;

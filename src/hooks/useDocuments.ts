@@ -92,32 +92,22 @@ export function useDocuments() {
     const ids = getDocumentIds(docId);
 
     for (const id of ids) {
-      const paths = [
-        `/api/fhir/portal/documents/${id}/download`,
-        `/api/portal/documents/${id}/download`,
-        `/api/documents/${id}/download`,
-        `/api/fhir/documents/${id}/download`,
-      ];
-
-      for (const path of paths) {
-        try {
-          const res = await fetchWithAuth(path);
-          if (res.ok) {
-            const blob = await res.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = doc?.fileName || 'document';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            return true;
-          }
-          if (res.status !== 404 && res.status !== 500 && res.status !== 403) break;
-        } catch {
-          // try next path
+      try {
+        const res = await fetchWithAuth(`/api/fhir/portal/documents/${id}/download`);
+        if (res.ok) {
+          const blob = await res.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = doc?.fileName || 'document';
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+          return true;
         }
+      } catch {
+        // try next id
       }
     }
 
@@ -131,35 +121,20 @@ export function useDocuments() {
     const ids = getDocumentIds(docId);
 
     for (const id of ids) {
-      const paths = [
-        `/api/fhir/portal/documents/${id}/download`,
-        `/api/portal/documents/${id}/download`,
-        `/api/documents/${id}/download`,
-        `/api/fhir/documents/${id}/download`,
-      ];
-
-      for (const path of paths) {
-        try {
-          const res = await fetchWithAuth(path);
-          if (res.ok) {
-            const blob = await res.blob();
-            const url = window.URL.createObjectURL(blob);
-            window.open(url, '_blank');
-            setTimeout(() => window.URL.revokeObjectURL(url), 10000);
-            return url;
-          }
-          if (res.status !== 404 && res.status !== 500 && res.status !== 403) {
-            const errorMsg = `Failed to load document (HTTP ${res.status})`;
-            if (typeof window !== 'undefined') window.alert(errorMsg);
-            return null;
-          }
-        } catch {
-          // Network error — try next path
+      try {
+        const res = await fetchWithAuth(`/api/fhir/portal/documents/${id}/download`);
+        if (res.ok) {
+          const blob = await res.blob();
+          const url = window.URL.createObjectURL(blob);
+          window.open(url, '_blank');
+          setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+          return url;
         }
+      } catch {
+        // try next id
       }
     }
 
-    // All paths failed
     if (typeof window !== 'undefined') {
       window.alert("Document not found or not available. Please contact your provider.");
     }

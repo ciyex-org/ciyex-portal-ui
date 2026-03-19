@@ -37,7 +37,7 @@ type Provider = { id: number; identification: { firstName: string; lastName: str
 type Location = { id: number; name: string; address: string };
 
 function statusBadge(status?: string) {
-    const s = (status || "").toUpperCase();
+    const s = String(status || "").toUpperCase();
     const cls = s === "SCHEDULED" ? "bg-blue-100 text-blue-700" : s === "COMPLETED" ? "bg-green-100 text-green-700" : s === "PENDING" ? "bg-amber-100 text-amber-700" : s === "CANCELLED" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600";
     return <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${cls}`}>{status || "Unknown"}</span>;
 }
@@ -105,10 +105,14 @@ export default function AppointmentsPage() {
                     const locationRef: string = a.location || "";
                     const providerId = a.providerId || (providerRef.includes("/") ? Number(providerRef.split("/").pop()) : undefined);
                     const locationId = a.locationId || (locationRef.includes("/") ? Number(locationRef.split("/").pop()) : undefined);
+                    // Safely extract appointmentType — FHIR may return it as an object (CodeableConcept)
+                    const rawApptType = a.appointmentType;
+                    const apptTypeStr = typeof rawApptType === "string" ? rawApptType
+                        : (rawApptType?.text || rawApptType?.coding?.[0]?.display || "");
                     return {
                         ...a,
                         id: a.id ? Number(a.id) : undefined,
-                        visitType: a.visitType && a.visitType !== "None" ? a.visitType : (a.appointmentType || ""),
+                        visitType: a.visitType && a.visitType !== "None" ? String(a.visitType) : apptTypeStr,
                         appointmentStartDate: startDate,
                         appointmentStartTime: startTime,
                         appointmentEndDate: endDate,
@@ -292,7 +296,7 @@ export default function AppointmentsPage() {
     }
 
     function isVirtual(vt?: string) {
-        const s = (vt || "").toLowerCase();
+        const s = String(vt || "").toLowerCase();
         return s.includes("virtual") || s.includes("telehealth") || s.includes("video") || s.includes("online") || s.includes("remote");
     }
 
@@ -375,7 +379,7 @@ export default function AppointmentsPage() {
                                                 <td className="px-4 py-3">{statusBadge(a.status)}</td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-1.5">
-                                                        {isVirtual(a.visitType) && (["scheduled", "pending", "booked", "arrived", "proposed"].includes((a.status || "").toLowerCase())) && a.id && (
+                                                        {isVirtual(a.visitType) && (["scheduled", "pending", "booked", "arrived", "proposed"].includes(String(a.status || "").toLowerCase())) && a.id && (
                                                             <button onClick={() => window.open(`/telehealth/${a.id}`, "_blank")} className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors">
                                                                 <Video className="h-3 w-3" /> Join
                                                             </button>

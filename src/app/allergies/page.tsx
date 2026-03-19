@@ -32,12 +32,26 @@ export default function AllergiesPage() {
         try {
             const res = await fetchWithAuth("/api/portal/allergies");
             const data = await res.json();
-            setAllergies((data.data || []).map((i: any) => ({
-            id: i.id,
-            substance: i.allergyName || i.allergy_name || i.substance || i.code || i.name || "",
-            reaction: i.reaction || i.reactionManifestations || i.manifestation || i.reactions || "",
-            severity: i.severity || i.criticalityText || i.criticality || "Mild",
-        })));
+            setAllergies((data.data || []).map((i: any) => {
+            // Extract reaction text — FHIR returns reaction as array of objects
+            let reaction = "";
+            if (typeof i.reaction === "string") {
+                reaction = i.reaction;
+            } else if (Array.isArray(i.reaction)) {
+                reaction = i.reaction.map((r: any) =>
+                    (r.manifestation || []).map((m: any) => m.text || m.display || (m.coding?.[0]?.display) || "").filter(Boolean).join(", ")
+                ).filter(Boolean).join("; ") || "";
+            }
+            if (!reaction) reaction = (typeof i.reactionManifestations === "string" ? i.reactionManifestations : "") || (typeof i.manifestation === "string" ? i.manifestation : "") || "";
+            // Extract substance — code can also be an object
+            const substance = i.allergyName || i.allergy_name || i.substance || (typeof i.code === "string" ? i.code : i.code?.text || i.code?.coding?.[0]?.display || "") || i.name || "";
+            return {
+                id: i.id,
+                substance,
+                reaction,
+                severity: i.severity || i.criticalityText || i.criticality || "Mild",
+            };
+        }));
         } catch { setAlert({ type: "error", message: "Failed to load allergies." }); }
     }
 

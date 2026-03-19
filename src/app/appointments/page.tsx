@@ -280,7 +280,10 @@ export default function AppointmentsPage() {
     function providerName(a: Appointment) {
         if (a.providerName) return a.providerName.replace(/^Dr\.?\s+/i, "");
         const p = providers.find((p) => p.id === a.providerId);
-        return p ? `${p.identification.firstName} ${p.identification.lastName}` : `Provider #${a.providerId}`;
+        if (!p) return `Provider #${a.providerId}`;
+        const first = p.identification?.firstName || (p as any).firstName || "";
+        const last = p.identification?.lastName || (p as any).lastName || "";
+        return (first + " " + last).trim() || `Provider #${a.providerId}`;
     }
 
     function providerInitials(a: Appointment) {
@@ -432,7 +435,7 @@ export default function AppointmentsPage() {
                                 <select name="providerId" value={form.providerId} onChange={handleChange} required
                                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                     <option value="">Choose provider</option>
-                                    {providers.map((p) => <option key={p.id} value={p.id}>Dr. {p.identification.firstName} {p.identification.lastName}{p.professionalDetails?.specialty ? ` - ${p.professionalDetails.specialty}` : ""}</option>)}
+                                    {providers.map((p) => { const first = p.identification?.firstName || (p as any).firstName || ""; const last = p.identification?.lastName || (p as any).lastName || ""; return <option key={p.id} value={p.id}>Dr. {first} {last}{p.professionalDetails?.specialty ? ` - ${p.professionalDetails.specialty}` : ""}</option>; })}
                                 </select>
                             </div>
 

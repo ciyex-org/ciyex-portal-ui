@@ -47,7 +47,7 @@ export default function ReportsPage() {
     const [selectedReport, setSelectedReport] = useState<ApiReport | null>(null);
 
     const loading = reportsLoading || docsLoading;
-    const error = reportsError && docsError ? reportsError : null;
+    const error = reportsError && docsError ? (reportsError || docsError) : null;
 
     // Reports from the reports endpoint are lab results (structured data, not files).
     // Documents from the documents endpoint are actual files (DocumentReferences with S3 storage).

@@ -138,7 +138,9 @@ export default function InsurancePage() {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>, level: Level) => {
         const { name, value } = e.target;
-        setPolicies((prev) => ({ ...prev, [level]: { ...prev[level], [name]: value } }));
+        // Group number must be alphanumeric only
+        const sanitized = name === "groupNumber" ? value.replace(/[^a-zA-Z0-9]/g, "") : value;
+        setPolicies((prev) => ({ ...prev, [level]: { ...prev[level], [name]: sanitized } }));
     };
 
     const handleSubscriberRelationChange = (level: Level, relation: string) => {
@@ -371,7 +373,10 @@ export default function InsurancePage() {
                             <input type="text" name="policyNumber" placeholder="Enter member ID" value={p.policyNumber} onChange={(e) => handleChange(e, level)} className={`${inputCls} font-mono`} />
                         </Field>
                         <Field label="Group Number">
-                            <input type="text" name="groupNumber" placeholder="Enter group number" value={p.groupNumber} onChange={(e) => handleChange(e, level)} className={inputCls} />
+                            <input type="text" name="groupNumber" placeholder="Enter group number (alphanumeric only)" value={p.groupNumber} onChange={(e) => handleChange(e, level)} className={inputCls} />
+                            {p.groupNumber && !/^[a-zA-Z0-9]+$/.test(p.groupNumber) && (
+                                <p className="text-xs text-red-500 mt-1">Group number must contain only letters and numbers</p>
+                            )}
                         </Field>
                         <Field label="Copay Amount" required>
                             <div className="relative">

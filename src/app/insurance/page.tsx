@@ -138,8 +138,8 @@ export default function InsurancePage() {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>, level: Level) => {
         const { name, value } = e.target;
-        // Group number must be alphanumeric only
-        const sanitized = name === "groupNumber" ? value.replace(/[^a-zA-Z0-9]/g, "") : value;
+        // Group number and policy number (member ID) must be alphanumeric only
+        const sanitized = (name === "groupNumber" || name === "policyNumber") ? value.replace(/[^a-zA-Z0-9]/g, "") : value;
         setPolicies((prev) => ({ ...prev, [level]: { ...prev[level], [name]: sanitized } }));
     };
 
@@ -370,7 +370,10 @@ export default function InsurancePage() {
                             <input type="text" name="planName" placeholder="e.g., PPO Plus, HMO Gold" value={p.planName} onChange={(e) => handleChange(e, level)} className={inputCls} required />
                         </Field>
                         <Field label="Member ID">
-                            <input type="text" name="policyNumber" placeholder="Enter member ID" value={p.policyNumber} onChange={(e) => handleChange(e, level)} className={`${inputCls} font-mono`} />
+                            <input type="text" name="policyNumber" placeholder="Enter member ID (alphanumeric only)" value={p.policyNumber} onChange={(e) => handleChange(e, level)} className={`${inputCls} font-mono`} />
+                            {p.policyNumber && !/^[a-zA-Z0-9]+$/.test(p.policyNumber) && (
+                                <p className="text-xs text-red-500 mt-1">Policy number must contain only letters and numbers</p>
+                            )}
                         </Field>
                         <Field label="Group Number">
                             <input type="text" name="groupNumber" placeholder="Enter group number (alphanumeric only)" value={p.groupNumber} onChange={(e) => handleChange(e, level)} className={inputCls} />

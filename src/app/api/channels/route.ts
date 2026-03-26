@@ -23,7 +23,8 @@ export async function GET(request: NextRequest) {
       method: 'GET',
       headers: forwardHeaders(request),
     });
-    const data = await response.json();
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : { success: false, message: 'Empty response', data: [] };
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error('Channels GET error:', error);

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
+import { safeStr } from "@/utils/safeStr";
 import { useMedications } from "@/hooks/useMedications";
 import { usePortalConfig } from "@/hooks/usePortalConfig";
 import AdminLayout from "@/app/(admin)/layout";
@@ -123,9 +124,9 @@ export default function Dashboard() {
                         id: a.id,
                         appointmentDate: dateStr,
                         appointmentTime: timeStr,
-                        providerName: a.providerName || a.providerDisplay || "Provider",
-                        appointmentType: a.visitType || a.appointmentType || "Visit",
-                        status: a.status || "scheduled",
+                        providerName: safeStr(a.providerName || a.providerDisplay, "Provider"),
+                        appointmentType: safeStr(a.visitType || a.appointmentType, "Visit"),
+                        status: safeStr(a.status, "scheduled"),
                     };
                 });
             setAppointments(upcoming);

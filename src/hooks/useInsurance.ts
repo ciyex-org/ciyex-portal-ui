@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
+import { safeStr } from "@/utils/safeStr";
 
 /* -------------------------------------------------------------------------- */
 /*                        FULL Insurance Coverage Typing                      */
@@ -95,11 +96,17 @@ export function useInsurance() {
             ? raw.content
             : [];
           // Normalize field names from backend variations
-          const coverageList = rawList.map((item: any) => ({
-            ...item,
-            coverageStartDate: item.coverageStartDate || item.effectiveDate || item.startDate || item.coverageStart || "",
-            coverageEndDate: item.coverageEndDate || item.effectiveDateEnd || item.endDate || item.coverageEnd || item.expirationDate || "",
-          }));
+          const coverageList = rawList.map((item: any) => {
+            // Flatten any nested FHIR objects to safe strings
+            const flat = Object.fromEntries(
+              Object.entries(item).map(([k, v]) => [k, typeof v === "object" && v !== null && !Array.isArray(v) ? safeStr(v) : v])
+            );
+            return {
+              ...flat,
+              coverageStartDate: item.coverageStartDate || item.effectiveDate || item.startDate || item.coverageStart || "",
+              coverageEndDate: item.coverageEndDate || item.effectiveDateEnd || item.endDate || item.coverageEnd || item.expirationDate || "",
+            };
+          });
           setCoverages(coverageList);
         } else {
           setCoverages([]);

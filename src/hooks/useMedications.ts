@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchWithAuth } from '@/utils/fetchWithAuth';
+import { safeStr } from '@/utils/safeStr';
 
 type Medication = {
   id: number;
@@ -60,12 +61,12 @@ export function useMedications() {
             id: item.id,
             patientId: item.patientId,
             encounterId: item.encounterId ?? null,
-            medicationName: item.medicationName,
-            dosage: item.dosage,
-            instructions: item.instructions,
+            medicationName: safeStr(item.medicationName || item.medication || item.code, "Unknown Medication"),
+            dosage: safeStr(item.dosage),
+            instructions: safeStr(item.instructions),
             dateIssued: item.dateIssued,
-            prescribingDoctor: item.prescribingDoctor || item.prescriberName || item.prescriber,
-            status: item.status,
+            prescribingDoctor: safeStr(item.prescribingDoctor || item.prescriberName || item.prescriber),
+            status: safeStr(item.status),
             audit: {
               createdDate: mapDate(item.audit?.createdDate),
               lastModifiedDate: mapDate(item.audit?.lastModifiedDate)

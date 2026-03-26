@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
+import { safeStr } from "@/utils/safeStr";
 
 export type ApiInvoice = {
   id: number;
@@ -57,15 +58,26 @@ export function useBilling() {
             ? raw.content
             : [];
           // Normalize FHIR Claim fields to ApiInvoice fields
-          const invoiceList = rawList.map((item: any) => ({
-            ...item,
-            invoiceNumber: item.invoiceNumber ?? (item.id ? `CLM-${item.id}` : undefined),
-            issueDate: item.issueDate ?? item.serviceDate,
-            totalGross: item.totalGross ?? (item.amount != null ? String(item.amount) : undefined),
-            payer: item.payer ?? item.providerDisplay,
-            notes: item.notes ?? item.description,
-            currency: item.currency ?? 'USD',
-          }));
+          const invoiceList: ApiInvoice[] = rawList.map((item: any) => {
+            // Flatten nested FHIR objects to safe strings
+            const flat: Record<string, any> = {};
+            for (const [k, v] of Object.entries(item)) {
+              flat[k] = typeof v === "object" && v !== null && !Array.isArray(v) ? safeStr(v) : v;
+            }
+            return {
+              ...flat,
+              id: item.id,
+              orgId: item.orgId,
+              patientId: item.patientId,
+              status: safeStr(item.status, "draft"),
+              invoiceNumber: item.invoiceNumber ?? (item.id ? `CLM-${item.id}` : undefined),
+              issueDate: item.issueDate ?? item.serviceDate,
+              totalGross: item.totalGross ?? (item.amount != null ? String(item.amount) : undefined),
+              payer: safeStr(item.payer ?? item.providerDisplay),
+              notes: safeStr(item.notes ?? item.description),
+              currency: item.currency ?? 'USD',
+            } as ApiInvoice;
+          });
           setInvoices(invoiceList);
         } else if (res.status === 403) {
           // Forbidden - set empty list and suppress error for UI continuity

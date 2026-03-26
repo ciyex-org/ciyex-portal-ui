@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import AdminLayout from "@/app/(admin)/layout";
 import { fetchWithAuth } from "@/utils/fetchWithAuth";
+import { safeStr } from "@/utils/safeStr";
 import { FlaskConical, AlertCircle, Eye, X } from "lucide-react";
 
 type LabOrder = {
@@ -61,14 +62,14 @@ export default function LabsPage() {
             const raw: any[] = Array.isArray(data.data) ? data.data : (data.data?.content || []);
             setLabs(raw.map((item: any) => ({
                 id: item.id,
-                testName: item.testName || item.testDisplay || item.orderName || item.test_name || item.name || item.testCode || "Lab Order",
+                testName: safeStr(item.testName || item.testDisplay || item.orderName || item.test_name || item.name || item.testCode, "Lab Order"),
                 orderedDate: normalizeDate(item.orderDate || item.orderDateTime || item.orderedDate || item.ordered_date || item.issued || item._lastUpdated) || "",
                 collectionDate: normalizeDate(item.effectiveDate || item.collectedDate || item.collectionDate || item.collection_date || item.specimenCollectedDate || item.effectiveDateTime || item.effectivePeriod?.start || item.performedDateTime || item.occurrenceDateTime || item.sampleDate || item.collectedAt),
                 resultDate: normalizeDate(item.reportedDate || item.resultDate || item.result_date || item.resultDateTime || item.signedAt || item.issued || item.completedDate),
-                status: item.status || "unknown",
-                result: item.conclusion || item.result || item.resultValue || undefined,
-                details: item.details || item.resultDetails || item.notes || undefined,
-                providerName: item.physicianName || item.orderingProvider || item.performer || item.providerName || item.provider_name || item.providerDisplay || undefined,
+                status: safeStr(item.status, "unknown"),
+                result: safeStr(item.conclusion || item.result || item.resultValue) || undefined,
+                details: safeStr(item.details || item.resultDetails || item.notes) || undefined,
+                providerName: safeStr(item.physicianName || item.orderingProvider || item.performer || item.providerName || item.provider_name || item.providerDisplay) || undefined,
             })));
         } catch (err) {
             setError(err instanceof Error ? err.message : "Could not load lab orders");

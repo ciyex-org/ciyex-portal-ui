@@ -9,6 +9,8 @@ export async function POST(request: NextRequest) {
     if (auth) hdrs['Authorization'] = auth;
     const org = request.headers.get('x-org-alias');
     if (org) hdrs['X-Org-Alias'] = org;
+    const tenant = request.headers.get('x-tenant-name');
+    if (tenant) hdrs['X-Tenant-Name'] = tenant;
     const body = await request.json();
     const res = await fetch(`${BACKEND_URL}/api/telehealth/sessions/from-appointment`, { method: 'POST', headers: hdrs, body: JSON.stringify(body) });
     const data = await res.json().catch(() => ({}));

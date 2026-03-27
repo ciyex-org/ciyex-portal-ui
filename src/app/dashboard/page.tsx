@@ -205,14 +205,14 @@ export default function Dashboard() {
             const combined = [
                 ...assigned.map((a: any) => ({
                     id: a.id,
-                    title: a.materialTitle || a.topic?.title || "Education Material",
-                    category: a.materialCategory || a.topic?.category || "General",
+                    title: safeStr(a.materialTitle || a.topic?.title, "Education Material"),
+                    category: safeStr(a.materialCategory || a.topic?.category, "General"),
                     assigned: true,
                 })),
                 ...topics.slice(0, 6).map((t: any) => ({
                     id: t.id,
-                    title: t.title || "Untitled",
-                    category: t.category || "General",
+                    title: safeStr(t.title, "Untitled"),
+                    category: safeStr(t.category, "General"),
                     assigned: false,
                 })),
             ];
@@ -236,9 +236,9 @@ export default function Dashboard() {
             const rawList = Array.isArray(d.data) ? d.data : (d.data?.content || []);
             const mapped = rawList.slice(0, 5).map((item: any) => ({
                 id: item.id,
-                fileName: item.fileName ?? item.filename ?? item.name ?? "Document",
-                category: item.category || "Medical Records",
-                createdDate: item.documentDate || item.createdDate || item.created_date || item.uploadDate || "",
+                fileName: safeStr(item.fileName ?? item.filename ?? item.name, "Document"),
+                category: safeStr(item.category, "Medical Records"),
+                createdDate: safeStr(item.documentDate || item.createdDate || item.created_date || item.uploadDate),
             }));
             setDocuments(mapped);
         } catch { /* optional */ }

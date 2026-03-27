@@ -70,7 +70,8 @@ export class MediasoupStompProvider implements VideoCallProvider {
             // This timeout is NOT cleared on STOMP connect — only when "joined" is received in setupMediasoup.
             this.joinTimeout = setTimeout(() => {
                 console.error("[telehealth] Timed out waiting for 'joined' from signaling server");
-                this.onStateChange?.({ error: "Could not connect to session — the session may have ended. Please try again.", callStatus: "error" });
+                this.stompClient?.deactivate().catch(() => {});
+                this.onStateChange?.({ error: "Could not connect to session — the telehealth server may be unavailable or the session has ended. Please try again.", callStatus: "error" });
                 resolve();
             }, 20000);
 
@@ -79,7 +80,7 @@ export class MediasoupStompProvider implements VideoCallProvider {
                 reconnectDelay: 5000,
                 heartbeatIncoming: 10000,
                 heartbeatOutgoing: 10000,
-                debug: (msg) => { if (msg?.includes("ERROR")) console.error("[STOMP]", msg); },
+                debug: () => {},
             });
 
             stompClient.onConnect = () => {
@@ -128,6 +129,7 @@ export class MediasoupStompProvider implements VideoCallProvider {
             stompClient.onStompError = (frame) => {
                 if (this.joinTimeout) { clearTimeout(this.joinTimeout); this.joinTimeout = null; }
                 console.error("[STOMP] Error:", frame.headers["message"]);
+                stompClient.deactivate().catch(() => {});
                 this.onStateChange?.({ error: "Signaling connection error — please refresh", callStatus: "error" });
                 resolve();
             };
@@ -136,8 +138,9 @@ export class MediasoupStompProvider implements VideoCallProvider {
                 if (this.joinTimeout) {
                     clearTimeout(this.joinTimeout);
                     this.joinTimeout = null;
-                    console.error("[telehealth] WebSocket closed before session joined");
-                    this.onStateChange?.({ error: "Connection lost — the telehealth server may be unavailable. Please try again.", callStatus: "error" });
+                    console.error("[telehealth] WebSocket closed — server unreachable");
+                    stompClient.deactivate().catch(() => {});
+                    this.onStateChange?.({ error: "Cannot reach the telehealth server. Please check your connection and try again.", callStatus: "error" });
                     resolve();
                 }
             };
@@ -305,7 +308,8 @@ export class MediasoupStompProvider implements VideoCallProvider {
     }
 
     sendChat(senderId: string, senderName: string, content: string): void {
-        this.stompClient?.publish({
+        if (!this.stompClient?.connected) return; // Guard: no-op if not connected
+        this.stompClient.publish({
             destination: `/app/session/${this.sessionId}/chat`,
             body: JSON.stringify({ senderId, senderName, content }),
         });

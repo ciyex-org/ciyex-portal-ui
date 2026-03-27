@@ -153,10 +153,11 @@ export function useNotifications() {
   }, []);
 
   useEffect(() => {
-    loadNotifications();
-    // Poll for new notifications every 30 seconds
+    // Defer initial load to avoid overwhelming the backend on dashboard mount
+    // (dashboard already fetches channels + appointments itself)
+    const initial = setTimeout(loadNotifications, 5000);
     const interval = setInterval(loadNotifications, 30000);
-    return () => clearInterval(interval);
+    return () => { clearTimeout(initial); clearInterval(interval); };
   }, [loadNotifications]);
 
   return {

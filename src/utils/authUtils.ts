@@ -200,6 +200,9 @@ export const getRefreshToken = (): string | null => {
 export const clearAuth = (): void => {
     if (typeof window === 'undefined') return;
 
+    // Clear in-memory caches
+    try { const { clearPortalConfigCache } = require('@/hooks/usePortalConfig'); clearPortalConfigCache(); } catch {}
+
     // Clear common auth data
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');

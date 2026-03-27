@@ -41,26 +41,29 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const load = async () => {
-            const user = localStorage.getItem("user");
-            if (!user) { router.push("/signin"); return; }
+        const user = localStorage.getItem("user");
+        if (!user) { router.push("/signin"); return; }
 
+        try {
             const u = JSON.parse(user);
             setFirstName(u.firstName || u.name?.split(" ")[0] || "Patient");
             setEmail(u.email || "");
+        } catch {
+            router.push("/signin");
+            return;
+        }
 
-            // Parallel data fetches — each one is optional
-            await Promise.allSettled([
-                loadAppointments(),
-                loadVitals(),
-                loadUnreadCount(),
-                loadEducation(),
-                loadDocuments(),
-            ]);
-            setLoading(false);
-        };
-        load();
-    }, [router]);
+        // Show dashboard immediately, load data in background
+        setLoading(false);
+
+        // Fire all data fetches in parallel — each one is independent and optional
+        loadAppointments();
+        loadVitals();
+        loadUnreadCount();
+        loadEducation();
+        loadDocuments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     /** Convert Java date arrays [y,m,d,h,min,...] or strings to Date */
     const toDate = (v: any): Date | null => {

@@ -48,6 +48,11 @@ export interface PortalConfig {
 
 let cachedConfig: PortalConfig | null = null;
 
+/** Call on login/logout to ensure fresh config for the new user session */
+export function clearPortalConfigCache() {
+    cachedConfig = null;
+}
+
 export function usePortalConfig() {
     const [config, setConfig] = useState<PortalConfig | null>(cachedConfig);
     const [loading, setLoading] = useState(!cachedConfig);

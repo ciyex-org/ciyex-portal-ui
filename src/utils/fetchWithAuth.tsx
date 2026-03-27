@@ -5,15 +5,7 @@ export async function fetchWithAuth(
   input: RequestInfo,
   init: RequestInit = {}
 ): Promise<Response> {
-  let token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
-
-  // 🕒 Wait for token to appear (after login redirect)
-  let attempts = 0;
-  while (!token && attempts < 15) {
-    await new Promise(r => setTimeout(r, 200));
-    token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
-    attempts++;
-  }
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
 
   if (!token) {
     if (typeof window !== "undefined") {
@@ -51,7 +43,17 @@ export async function fetchWithAuth(
     url = (input as Request).url;
   }
 
-  const response = await fetch(url, { ...init, headers: mergedHeaders, credentials: 'include' });
+  // Abort requests that take longer than 15 seconds to prevent hanging
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  const mergedInit = { ...init, headers: mergedHeaders, credentials: 'include' as RequestCredentials, signal: init.signal || controller.signal };
+
+  let response: Response;
+  try {
+    response = await fetch(url, mergedInit);
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (response.status === 401) {
     // Try to refresh the token before giving up

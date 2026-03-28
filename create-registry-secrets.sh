@@ -11,7 +11,7 @@ echo "1. Creating regcred in ciyex-dev namespace..."
 kubectl create secret docker-registry regcred \
   --docker-server=$REGISTRY \
   --docker-username=dev \
-  --docker-password=REGISTRY_DEV_PASSWORD_PLACEHOLDER \
+  --docker-password=${REGISTRY_DEV_PASSWORD} \
   -n ciyex-dev \
   --dry-run=client -o yaml | kubectl apply -f -
 
@@ -23,7 +23,7 @@ echo "2. Creating regcred in ciyex-stage namespace..."
 kubectl create secret docker-registry regcred \
   --docker-server=$REGISTRY \
   --docker-username=dev \
-  --docker-password=REGISTRY_DEV_PASSWORD_PLACEHOLDER \
+  --docker-password=${REGISTRY_DEV_PASSWORD} \
   -n ciyex-stage \
   --dry-run=client -o yaml | kubectl apply -f -
 
@@ -35,7 +35,7 @@ echo "3. Creating regcred in ciyex-prod namespace..."
 kubectl create secret docker-registry regcred \
   --docker-server=$REGISTRY \
   --docker-username=prod \
-  --docker-password=REGISTRY_PROD_PASSWORD_PLACEHOLDER \
+  --docker-password=${REGISTRY_PROD_PASSWORD} \
   -n ciyex-prod \
   --dry-run=client -o yaml | kubectl apply -f -
 

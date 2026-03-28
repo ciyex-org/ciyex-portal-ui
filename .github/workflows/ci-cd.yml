@@ -35,7 +35,7 @@ env:
   IMAGE_NAME: ciyex-portal-ui
   # Records which ref supplied the workflow file at runtime (branch/tag/ref)
   WORKFLOW_SOURCE: ${{ github.ref }}
-  REGISTRY: registry.apps-prod.us-east.in.hinisoft.com
+  REGISTRY: ${{ secrets.REGISTRY_URL }}
   # When set to 'true' the workflow will attempt login/push to the internal registry.
   # Set this secret to 'true' for runs on self-hosted runners inside your network.
   USE_INTERNAL_REGISTRY: ${{ secrets.USE_INTERNAL_REGISTRY }}

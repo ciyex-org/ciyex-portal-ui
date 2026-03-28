@@ -1,0 +1,563 @@
+name: CI/CD Pipeline (Advanced)
+
+on:
+  push:
+    branches:
+      - main
+      - 'hotfix-*'
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        type: choice
+        options:
+          - 'Build'
+          - 'Promote to RC'
+          - 'Promote to GA'
+          - 'Skip RC'
+          - 'Deploy ArgoCD Apps'
+        default: 'Build'
+      runner:
+        description: 'Runner label to use for workflow_dispatch (e.g. self-hosted or ubuntu-latest)'
+        type: string
+        default: 'self-hosted'
+
+concurrency:
+  group: portal-ui-version-management
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: ciyex-portal-ui
+  # Records which ref supplied the workflow file at runtime (branch/tag/ref)
+  WORKFLOW_SOURCE: ${{ github.ref }}
+  REGISTRY: registry.apps-prod.us-east.in.hinisoft.com
+  # When set to 'true' the workflow will attempt login/push to the internal registry.
+  # Set this secret to 'true' for runs on self-hosted runners inside your network.
+  USE_INTERNAL_REGISTRY: ${{ secrets.USE_INTERNAL_REGISTRY }}
+
+jobs:
+  promote-rc:
+    name: Promote to Release Candidate
+    if: (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Promote to RC') || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-rc'))
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'self-hosted' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Validate branch
+        run: |
+          # Only validate branch when this was invoked manually from workflow_dispatch.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            BRANCH="${GITHUB_REF#refs/heads/}"
+            if [ "$BRANCH" != "main" ]; then
+              echo "❌ Error: Promote to RC must be run from main branch"
+              echo "Current branch: $BRANCH"
+              exit 1
+            fi
+          else
+            echo "Skipping branch validation for non-dispatch event: ${GITHUB_REF}"
+          fi
+
+      - name: Promote to RC
+        run: |
+          BASE=$(grep -m1 '"version"' package.json | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^\"]+)".*/\1/')
+          MAJOR=$(echo $BASE | cut -d. -f1)
+          MINOR=$(echo $BASE | cut -d. -f2)
+          PATCH=$(echo $BASE | cut -d. -f3 | cut -d- -f1)
+          RC_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          LATEST_ALPHA=$(git tag -l "${MAJOR}.${MINOR}.${PATCH}-alpha.*" --sort=-v:refname | head -n1)
+          if [ -z "$LATEST_ALPHA" ]; then
+            echo "ℹ️ No alpha tag found for ${MAJOR}.${MINOR}.${PATCH} - skipping RC promotion"
+            exit 0
+          fi
+          echo "📦 Latest alpha: $LATEST_ALPHA"
+
+          if git tag -l "${RC_VERSION}-rc" | grep -q .; then
+            echo "ℹ️ RC already exists for ${RC_VERSION} - skipping RC promotion"
+            exit 0
+          fi
+
+          echo "${{ secrets.PROD_REGISTRY_PASSWORD }}" | docker login $REGISTRY -u ${{ secrets.PROD_REGISTRY_USERNAME }} --password-stdin
+
+          ALPHA_IMAGE="${REGISTRY}/${IMAGE_NAME}:${LATEST_ALPHA}"
+          RC_IMAGE="${REGISTRY}/${IMAGE_NAME}:${RC_VERSION}-rc"
+
+          docker pull $ALPHA_IMAGE
+          docker tag $ALPHA_IMAGE $RC_IMAGE
+          docker push $RC_IMAGE
+          echo "✅ Retagged $ALPHA_IMAGE → $RC_IMAGE"
+
+          git pull origin main || true
+          git tag -a "${RC_VERSION}-rc" -m "Release Candidate ${RC_VERSION}-rc"
+          git push origin "${RC_VERSION}-rc" || true
+
+          # Update stage overlay
+          sed -i "s/newTag: .*/newTag: \"${RC_VERSION}-rc\"/" k8s/overlays/stage/kustomization.yaml || true
+          git add k8s/overlays/stage/kustomization.yaml || true
+          git commit -m "chore: update stage image to ${RC_VERSION}-rc [skip ci]" || true
+          git push origin main || true
+
+  promote-ga:
+    name: Promote to General Availability
+    if: (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Promote to GA') || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-alpha') && !contains(github.ref, '-rc'))
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'self-hosted' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Promote to GA
+        run: |
+          RC_TAG=""
+          for tag in $(git tag -l "*-rc" --sort=v:refname); do
+            GA_VERSION=$(echo "$tag" | sed 's/-rc$//')
+            if ! git rev-parse "v${GA_VERSION}" >/dev/null 2>&1; then
+              RC_TAG="$tag"
+              break
+            fi
+          done
+
+          if [ -z "$RC_TAG" ]; then
+            echo "ℹ️ No unpromoted RC tag found - skipping GA promotion"
+            exit 0
+          fi
+          
+          echo "📦 Found oldest unpromoted RC: $RC_TAG"
+
+          GA_VERSION=$(echo "$RC_TAG" | sed 's/-rc$//')
+          if git rev-parse "v${GA_VERSION}" >/dev/null 2>&1; then
+            echo "❌ GA version v${GA_VERSION} already released"
+            exit 1
+          fi
+
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          echo "${{ secrets.PROD_REGISTRY_PASSWORD }}" | docker login $REGISTRY -u ${{ secrets.PROD_REGISTRY_USERNAME }} --password-stdin
+
+          RC_IMAGE="${REGISTRY}/${IMAGE_NAME}:${RC_TAG}"
+          GA_IMAGE="${REGISTRY}/${IMAGE_NAME}:${GA_VERSION}"
+
+          docker pull $RC_IMAGE
+          docker tag $RC_IMAGE $GA_IMAGE
+          docker push $GA_IMAGE
+
+          git tag -a "v${GA_VERSION}" -m "Release ${GA_VERSION}"
+          git push origin "v${GA_VERSION}" || true
+
+          # Update prod overlay
+          sed -i "s/newTag: .*/newTag: \"${GA_VERSION}\"/" k8s/overlays/prod/kustomization.yaml || true
+          git add k8s/overlays/prod/kustomization.yaml || true
+          git commit -m "chore: update prod image to ${GA_VERSION} [skip ci]" || true
+          git push origin main || true
+
+  skip-rc:
+    name: Skip Release Candidate
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Skip RC'
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'self-hosted' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Find and Remove Oldest RC
+        run: |
+          RC_TAG=""
+          for tag in $(git tag -l "*-rc" --sort=v:refname); do
+            GA_VERSION=$(echo "$tag" | sed 's/-rc$//')
+            if ! git rev-parse "v${GA_VERSION}" >/dev/null 2>&1; then
+              RC_TAG="$tag"
+              break
+            fi
+          done
+
+          if [ -z "$RC_TAG" ]; then
+            echo "No unpromoted RC tag found to skip"
+            exit 1
+          fi
+
+          echo "Deleting RC tag: $RC_TAG"
+          git tag -d "$RC_TAG" || true
+          git push origin --delete "$RC_TAG" || true
+
+      - name: Revert Stage Overlay (optional)
+        run: |
+          git pull --rebase origin main || true
+          NEXT_RC=""
+          for tag in $(git tag -l "*-rc" --sort=v:refname); do
+            GA_VERSION=$(echo "$tag" | sed 's/-rc$//')
+            if ! git rev-parse "v${GA_VERSION}" >/dev/null 2>&1; then
+              NEXT_RC="$tag"
+              break
+            fi
+          done
+
+          if [ -n "$NEXT_RC" ]; then
+            echo "Reverting stage overlay to next RC: $NEXT_RC"
+            sed -i "s/newTag: .*/newTag: \"$NEXT_RC\"/" k8s/overlays/stage/kustomization.yaml || true
+            git add k8s/overlays/stage/kustomization.yaml || true
+            git commit -m "chore: revert stage to $NEXT_RC after skipping $RC_TAG" || true
+            git push origin main || true
+          else
+            echo "No remaining RC tags. Stage overlay not modified."
+          fi
+
+  deploy-argocd:
+    name: Deploy ArgoCD Applications
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Deploy ArgoCD Apps'
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'self-hosted' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure kubectl for ArgoCD namespace
+        run: |
+          mkdir -p ~/.kube
+          # Use dev kubeconfig to access the cluster (ArgoCD is typically in the same cluster)
+          echo "${{ secrets.KUBECONFIG_DEV }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Verify ArgoCD namespace
+        run: |
+          if ! kubectl get namespace argocd 2>/dev/null; then
+            echo "❌ ArgoCD namespace not found. Please install ArgoCD first:"
+            echo "kubectl create namespace argocd"
+            echo "kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml"
+            exit 1
+          fi
+          echo "✅ ArgoCD namespace exists"
+
+      - name: Deploy ArgoCD Applications
+        run: |
+          echo "📦 Deploying ArgoCD applications..."
+          kubectl apply -f argocd/dev.yaml
+          kubectl apply -f argocd/stage.yaml
+          kubectl apply -f argocd/prod.yaml
+          
+          echo ""
+          echo "✅ ArgoCD applications deployed successfully!"
+          echo ""
+          echo "📊 Application Status:"
+          kubectl get applications -n argocd | grep ciyex-portal-ui || true
+          
+          echo ""
+          echo "🔄 ArgoCD will now automatically sync deployments when kustomization.yaml files are updated"
+
+  version:
+    name: Determine Version
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.action == 'Build'
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'self-hosted' }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      environment: ${{ steps.version.outputs.environment }}
+      overlay: ${{ steps.version.outputs.overlay }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Get base version from package.json
+        id: base
+        run: |
+          BASE_VERSION=$(grep -m1 '"version"' package.json | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
+          echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Base version: $BASE_VERSION"
+
+      - name: Calculate version
+        id: version
+        run: |
+          BASE="${{ steps.base.outputs.base_version }}"
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            ENV="prod"
+            OVERLAY="prod"
+          elif [[ "${{ github.ref }}" == refs/heads/release-* ]] || [[ "${{ github.ref }}" == refs/heads/release/* ]]; then
+            RELEASE_MINOR="${GITHUB_REF#refs/heads/release/}"
+            RELEASE_MINOR="${RELEASE_MINOR%%.*}"
+            LAST_RC=$(git tag -l "${RELEASE_MINOR}.*.*-rc.*" --sort=-v:refname | head -n1)
+            if [ -n "$LAST_RC" ]; then
+              LAST_RC_NUM=$(echo "$LAST_RC" | sed -E "s/.*-rc\.([0-9]+)/\1/")
+              RC_BASE=$(echo "$LAST_RC" | sed 's/-rc\..*//')
+              COMMITS_SINCE=$(git rev-list --count HEAD ^$(git rev-list -n1 "$LAST_RC") 2>/dev/null || echo "1")
+              if [ "$COMMITS_SINCE" -gt 0 ]; then
+                RC_NUM=$((LAST_RC_NUM + 1))
+              else
+                RC_NUM=$LAST_RC_NUM
+              fi
+              VERSION="${RC_BASE}-rc.${RC_NUM}"
+            else
+              VERSION="${RELEASE_MINOR}.0.0-rc.1"
+            fi
+            ENV="stage"
+            OVERLAY="stage"
+          else
+            LAST_TAG=$(git tag -l "${BASE}-alpha.*" --sort=-v:refname | head -n1)
+            if [ -n "$LAST_TAG" ]; then
+              LAST_NUM=$(echo "$LAST_TAG" | sed "s/${BASE}-alpha.//")
+              ALPHA_NUM=$((LAST_NUM + 1))
+            else
+              ALPHA_NUM=1
+            fi
+            VERSION="${BASE}-alpha.${ALPHA_NUM}"
+            ENV="dev"
+            OVERLAY="dev"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "environment=$ENV" >> $GITHUB_OUTPUT
+          echo "overlay=$OVERLAY" >> $GITHUB_OUTPUT
+          echo "🏷️ Version: $VERSION | Environment: $ENV"
+
+  pr-build:
+    name: PR Build
+    if: github.event_name == 'pull_request'
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'self-hosted' }}
+    needs: [version]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Build Docker image (no push)
+        run: |
+          docker build -t $REGISTRY/$IMAGE_NAME:pr-${{ github.event.number }} .
+          echo "✅ PR build successful"
+
+  build-deploy:
+    name: Build & Deploy (${{ needs.version.outputs.environment }})
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'Build')
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'self-hosted' }}
+    needs: [version]
+    environment:
+      name: ${{ needs.version.outputs.environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Login to Private Registry
+        if: env.USE_INTERNAL_REGISTRY == 'true' || (github.event_name == 'workflow_dispatch' && github.event.inputs.runner == 'self-hosted')
+        run: |
+          echo "${{ secrets.PROD_REGISTRY_PASSWORD }}" | docker login $REGISTRY -u ${{ secrets.PROD_REGISTRY_USERNAME }} --password-stdin
+
+      - name: Build and Push Docker Image
+        if: env.USE_INTERNAL_REGISTRY == 'true' || (github.event_name == 'workflow_dispatch' && github.event.inputs.runner == 'self-hosted')
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          ENV="${{ needs.version.outputs.environment }}"
+          docker build -t $REGISTRY/$IMAGE_NAME:$VERSION -t $REGISTRY/$IMAGE_NAME:$ENV .
+          docker push $REGISTRY/$IMAGE_NAME:$VERSION
+          docker push $REGISTRY/$IMAGE_NAME:$ENV
+          echo "✅ Pushed: $REGISTRY/$IMAGE_NAME:$VERSION"
+
+      - name: Create Git tag for alpha/rc
+        if: "!startsWith(github.ref, 'refs/tags/')"
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git tag -a "$VERSION" -m "Release $VERSION"
+          git push origin "$VERSION" || echo "Tag already exists"
+
+      - name: Update kustomization.yaml with new image tag
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          OVERLAY="${{ needs.version.outputs.overlay }}"
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git pull --rebase origin ${{ github.ref_name }} || true
+          sed -i "s/newTag: .*/newTag: \"$VERSION\"/" k8s/overlays/$OVERLAY/kustomization.yaml || true
+          git add k8s/overlays/$OVERLAY/kustomization.yaml || true
+          git commit -m "chore($OVERLAY): update image to $VERSION [skip ci]" || echo "No changes"
+          git push || echo "Push skipped"
+
+      - name: Setup kubectl
+        if: env.USE_INTERNAL_REGISTRY == 'true' || github.event_name == 'workflow_dispatch'
+        uses: azure/setup-kubectl@v3
+
+      - name: Configure kubectl
+        if: env.USE_INTERNAL_REGISTRY == 'true' || github.event_name == 'workflow_dispatch'
+        continue-on-error: true
+        run: |
+          mkdir -p ~/.kube
+          KUBECONFIG_CONTENT=""
+          case "${{ needs.version.outputs.environment }}" in
+            dev)   KUBECONFIG_CONTENT="${{ secrets.KUBECONFIG_DEV }}" ;;
+            stage) KUBECONFIG_CONTENT="${{ secrets.KUBECONFIG_STAGE }}" ;;
+            prod)  KUBECONFIG_CONTENT="${{ secrets.KUBECONFIG_PROD }}" ;;
+          esac
+
+          if [ -z "$KUBECONFIG_CONTENT" ]; then
+            echo "No KUBECONFIG secret available for environment '${{ needs.version.outputs.environment }}' - skipping kubectl configuration and deploy steps."
+            exit 0
+          fi
+
+          echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config || true
+
+      - name: Deploy to Kubernetes
+        if: env.USE_INTERNAL_REGISTRY == 'true' || github.event_name == 'workflow_dispatch'
+        continue-on-error: true
+        run: |
+          OVERLAY="${{ needs.version.outputs.overlay }}"
+          NAMESPACE="ciyex-${{ needs.version.outputs.environment }}"
+          kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret docker-registry regcred \
+            --docker-server=$REGISTRY \
+            --docker-username=${{ secrets.PROD_REGISTRY_USERNAME }} \
+            --docker-password=${{ secrets.PROD_REGISTRY_PASSWORD }} \
+            -n $NAMESPACE \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl apply -k k8s/overlays/$OVERLAY
+          kubectl rollout status deployment/$OVERLAY-ciyex-portal-ui -n $NAMESPACE --timeout=5m || true
+
+  notify:
+    name: Notify
+    if: always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.runner || 'self-hosted' }}
+    needs: [version, build-deploy, promote-rc, promote-ga]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Send Teams notification
+        run: |
+          WEBHOOK="${{ secrets.TEAMS_WEBHOOK_URL }}"
+          [ -z "$WEBHOOK" ] && exit 0
+
+          # Determine action type and status
+          ACTION="${{ github.event.inputs.action }}"
+          if [ -z "$ACTION" ]; then
+            ACTION="Build"
+          fi
+
+          # Determine overall status from all jobs
+          BUILD_STATUS="${{ needs.build-deploy.result }}"
+          RC_STATUS="${{ needs.promote-rc.result }}"
+          GA_STATUS="${{ needs.promote-ga.result }}"
+          
+          STATUS="success"
+          if [ "$BUILD_STATUS" = "failure" ] || [ "$RC_STATUS" = "failure" ] || [ "$GA_STATUS" = "failure" ]; then
+            STATUS="failure"
+          elif [ "$BUILD_STATUS" = "skipped" ] && [ "$RC_STATUS" = "skipped" ] && [ "$GA_STATUS" = "skipped" ]; then
+            STATUS="skipped"
+          fi
+          
+          EMOJI="✅"; [ "$STATUS" != "success" ] && EMOJI="❌"
+
+          # Determine version and environment based on action type
+          if [ "$ACTION" = "Promote to RC" ]; then
+            # Extract base version from package.json for RC promotion
+            BASE=$(grep -m1 '"version"' package.json | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^\"]+)".*/\1/')
+            MAJOR=$(echo $BASE | cut -d. -f1)
+            MINOR=$(echo $BASE | cut -d. -f2)
+            PATCH=$(echo $BASE | cut -d. -f3 | cut -d- -f1)
+            VERSION="${MAJOR}.${MINOR}.${PATCH}-rc"
+            ENV="stage"
+          elif [ "$ACTION" = "Promote to GA" ]; then
+            # Extract base version from package.json for GA promotion
+            BASE=$(grep -m1 '"version"' package.json | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^\"]+)".*/\1/')
+            MAJOR=$(echo $BASE | cut -d. -f1)
+            MINOR=$(echo $BASE | cut -d. -f2)
+            PATCH=$(echo $BASE | cut -d. -f3 | cut -d- -f1)
+            VERSION="${MAJOR}.${MINOR}.${PATCH}"
+            ENV="prod"
+          else
+            # For Build action, use version from version job
+            VERSION="${{ needs.version.outputs.version }}"
+            ENV="${{ needs.version.outputs.environment }}"
+            # Fallback if version job was skipped
+            if [ -z "$VERSION" ]; then
+              VERSION="${GITHUB_REF##*/}"
+            fi
+            if [ -z "$ENV" ]; then
+              ENV="dev"
+            fi
+          fi
+
+          curl -H "Content-Type: application/json" -d '{
+            "type": "message",
+            "attachments": [{
+              "contentType": "application/vnd.microsoft.card.adaptive",
+              "content": {
+                "type": "AdaptiveCard",
+                "version": "1.4",
+                "body": [
+                  {"type": "TextBlock", "size": "Large", "weight": "Bolder", "text": "'"$EMOJI"' Ciyex Portal UI - '"$ENV"'"},
+                  {"type": "FactSet", "facts": [
+                    {"title": "Action", "value": "'"$ACTION"'"},
+                    {"title": "Version", "value": "'"$VERSION"'"},
+                    {"title": "Status", "value": "'"$STATUS"'"},
+                    {"title": "Actor", "value": "${{ github.actor }}"}
+                  ]}
+                ],
+                "actions": [{"type": "Action.OpenUrl", "title": "View", "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]
+              }
+            }]
+          }' "$WEBHOOK"

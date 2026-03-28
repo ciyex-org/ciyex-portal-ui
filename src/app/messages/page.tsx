@@ -71,6 +71,7 @@ export default function MessagesPage() {
     const { providers } = useCareTeamProviders();
     const [currentUserId, setCurrentUserId] = useState("");
     const [currentUserName, setCurrentUserName] = useState("");
+    const [currentUserIds, setCurrentUserIds] = useState<string[]>([]);
 
     const [channels, setChannels] = useState<Channel[]>([]);
     const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
@@ -87,8 +88,12 @@ export default function MessagesPage() {
         if (user) {
             try {
                 const u = JSON.parse(user);
-                setCurrentUserId(u.sub || u.id || u.userId || u.email || u.username || "");
+                const uid = u.sub || u.id || u.userId || u.email || u.username || "";
+                setCurrentUserId(uid);
                 setCurrentUserName(u.name || u.firstName || [u.given_name, u.family_name].filter(Boolean).join(" ") || u.preferred_username || "Patient");
+                // Collect all possible user identifiers for matching senderId
+                const ids = [uid, u.sub, u.id, u.userId, u.email, u.username, u.preferred_username, String(u.patientId || "")].filter(Boolean).map(String);
+                setCurrentUserIds([...new Set(ids)]);
             } catch { /* ignore parse errors */ }
         }
     }, []);
@@ -398,6 +403,8 @@ export default function MessagesPage() {
                                 groups={groupedMessages}
                                 loading={loadingMessages}
                                 currentUserId={currentUserId}
+                                currentUserIds={currentUserIds}
+                                currentUserName={currentUserName}
                             />
 
                             {/* Compose */}
@@ -486,10 +493,12 @@ export default function MessagesPage() {
    ═══════════════════════════════════════════════════ */
 
 /* ── Message List ── */
-function MessageList({ groups, loading, currentUserId }: {
+function MessageList({ groups, loading, currentUserId, currentUserIds = [], currentUserName = "" }: {
     groups: { date: string; items: MessageItem[] }[];
     loading: boolean;
     currentUserId: string;
+    currentUserIds?: string[];
+    currentUserName?: string;
 }) {
     const scrollRef = useRef<HTMLDivElement>(null);
     const prevCount = useRef(0);
@@ -540,7 +549,7 @@ function MessageList({ groups, loading, currentUserId }: {
                                 <MsgItem
                                     key={m.id}
                                     msg={m}
-                                    isMe={m.senderId === currentUserId}
+                                    isMe={currentUserIds.includes(m.senderId) || m.senderId === currentUserId || (!!currentUserName && m.senderName === currentUserName)}
                                     showHeader={isFirst}
                                 />
                             );

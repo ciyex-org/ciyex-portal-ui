@@ -576,7 +576,9 @@ function MsgItem({ msg, isMe, showHeader }: { msg: MessageItem; isMe: boolean; s
     const color = msg.senderAvatar?.color || avatarColor(msg.senderName);
 
     return (
-        <div className={`group flex gap-3 px-5 hover:bg-gray-50/80 transition-colors ${showHeader ? "pt-2" : "pt-0.5"} pb-0.5`}>
+        <div className={`group flex px-5 hover:bg-gray-50/80 transition-colors ${
+            isMe ? "flex-row-reverse gap-2.5" : "flex-row gap-3"
+        } ${showHeader ? "pt-2" : "pt-0.5"} pb-0.5`}>
             {/* Avatar column */}
             <div className="w-9 shrink-0">
                 {showHeader && (
@@ -586,15 +588,19 @@ function MsgItem({ msg, isMe, showHeader }: { msg: MessageItem; isMe: boolean; s
                 )}
             </div>
             {/* Content */}
-            <div className="flex-1 min-w-0">
+            <div className={`max-w-[75%] min-w-0 ${isMe ? "flex flex-col items-end" : ""}`}>
                 {showHeader && (
-                    <div className="flex items-center gap-2 mb-0.5">
+                    <div className={`flex items-center gap-2 mb-0.5 ${isMe ? "flex-row-reverse" : ""}`}>
                         <span className="text-sm font-semibold text-gray-900">{msg.senderName || "Unknown"}</span>
                         <span className="text-xs text-gray-400">{time}</span>
                         {msg.isPinned && <Pin className="h-3 w-3 text-amber-500" />}
                     </div>
                 )}
-                <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                <div className={`inline-block rounded-2xl px-4 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words ${
+                    isMe
+                        ? "bg-blue-500 text-white rounded-tr-sm"
+                        : "bg-gray-100 text-gray-800 rounded-tl-sm"
+                }`}>{msg.content}</div>
 
                 {/* Attachments */}
                 {msg.attachments && msg.attachments.length > 0 && (
